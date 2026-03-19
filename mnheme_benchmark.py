@@ -144,6 +144,7 @@ class MnhemeBenchmark:
         print(f"{'='*W}")
 
         self._write()
+        self._write_batch()
         self._write_no_fsync()
         self._read()
         self._search()
@@ -182,6 +183,36 @@ class MnhemeBenchmark:
         self.meta["total_records"] = db.count()
         print(f"\n  Dataset pronto: {db.count():,} record")
 
+    # ── 1b. SCRITTURA BATCH ──────────────────
+
+    def _write_batch(self) -> None:
+        header("1b. SCRITTURA  --  remember_many() batch (un fsync per N record)")
+        tmp = self.db_path + ".batch"
+        if os.path.exists(tmp):
+            os.remove(tmp)
+
+        db_b = MemoryDB(tmp)
+        batch_sizes = [10, 50, 100, 500]
+
+        for bs in batch_sizes:
+            items = [rand_record() for _ in range(bs)]
+            r = measure(
+                f"remember_many({bs} record)  1 fsync",
+                lambda i=items: db_b.remember_many(i),
+                n=max(5, 200 // bs),
+                warmup=1,
+            )
+            self.results.append(r)
+            per_record_ms = r.mean_ms / bs
+            print(f"  {r.name:<46}  {r.mean_ms:>7.2f}ms totale  "
+                  f"{per_record_ms:>6.3f}ms/rec  "
+                  f"{bs/r.mean_ms*1000:>8,.0f} rec/s")
+
+        os.remove(tmp)
+        files_dir = tmp.replace(".mnheme", "_files")
+        if os.path.exists(files_dir):
+            import shutil; shutil.rmtree(files_dir, ignore_errors=True)
+
     # ── 2. SCRITTURA senza fsync ─────────────
 
     def _write_no_fsync(self) -> None:
@@ -197,19 +228,24 @@ class MnhemeBenchmark:
             def append(self, record):
                 payload = json.dumps(record, ensure_ascii=False).encode("utf-8")
                 header_bytes = _sm.MAGIC + _st.pack(">I", len(payload))
-                with self._lock:
+                with self._write_lock:          # era self._lock nella v1
                     with open(self._path, "ab") as f:
                         offset = f.tell()
                         f.write(header_bytes + payload)
+                    _sm._reopen(self)
                     return offset
 
         class FastDB(MemoryDB):
             def __init__(self, path):
                 from index import IndexEngine
-                self._storage = FastStorage(path)
+                from filestore import FileStore
+                import pathlib
+                p = pathlib.Path(path)
+                self._storage = FastStorage(p)
                 self._index   = IndexEngine()
                 self._index.rebuild(self._storage.scan())
-                self._path    = str(path)
+                self._path    = str(p)
+                self._files   = FileStore(p.parent / (p.stem + "_files"))
 
         db_fast = FastDB(tmp)
         r = measure(
@@ -344,6 +380,9 @@ class MnhemeBenchmark:
                          "recall_all_ms": round(ra, 2),
                          "search_ms": round(sr, 2), "file_kb": round(fkb, 1)})
             os.remove(tmp)
+            files_dir = tmp.replace(".mnheme", "_files")
+            if os.path.exists(files_dir):
+                import shutil; shutil.rmtree(files_dir, ignore_errors=True)
 
         self.meta["scale"] = rows
 
@@ -355,11 +394,11 @@ class MnhemeBenchmark:
         db    = MemoryDB(self.db_path)
         info  = db.storage_info()
         n     = info["total_records"]
-        sb    = info["size_bytes"]
+        sb    = info["log_size_bytes"]
         avg_b = sb / n if n else 0
 
         rows = [
-            ("Percorso file",                 info["path"]),
+            ("Percorso file",                 info["log_path"]),
             ("Record totali",                 f"{n:,}"),
             ("Dimensione totale",             f"{sb:,} B  ({sb/1024:.2f} KB  /  {sb/1024/1024:.3f} MB)"),
             ("Byte medi per record",          f"{avg_b:.1f} B"),

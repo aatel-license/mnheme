@@ -33,6 +33,7 @@ import json
 import os
 import shutil
 import tempfile
+import threading
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -142,10 +143,11 @@ class FileStore:
         self._probe  = FsProbe(probe_target)
         self._caps   = self._probe.detect()
 
-        # Indice in RAM
+        # Indice in RAM + lock per thread safety (punto 6)
         self._index_path = self._base / self.INDEX_FILE
-        self._idx_pool : dict[str, str]        = {}   # sha256 → pool_rel_path
-        self._idx_mem  : dict[str, list[dict]] = {}   # memory_id → [FileEntry.to_dict()]
+        self._idx_pool : dict[str, str]        = {}
+        self._idx_mem  : dict[str, list[dict]] = {}
+        self._lock     : threading.Lock        = threading.Lock()
         self._load_index()
 
     @property
@@ -228,9 +230,10 @@ class FileStore:
             stored_at     = datetime.now(timezone.utc).isoformat(),
         )
 
-        self._idx_pool.setdefault(checksum, str(pool_path.relative_to(self._base)))
-        self._idx_mem.setdefault(memory_id, []).append(entry.to_dict())
-        self._save_index()
+        with self._lock:
+            self._idx_pool.setdefault(checksum, str(pool_path.relative_to(self._base)))
+            self._idx_mem.setdefault(memory_id, []).append(entry.to_dict())
+            self._save_index()
 
         return entry
 
@@ -263,9 +266,10 @@ class FileStore:
                 **{**entry.to_dict(), "original_name": filename}
             )
             # Aggiorna indice con il nome corretto
-            if memory_id in self._idx_mem:
-                self._idx_mem[memory_id][-1]["original_name"] = filename
-                self._save_index()
+            with self._lock:
+                if memory_id in self._idx_mem:
+                    self._idx_mem[memory_id][-1]["original_name"] = filename
+                    self._save_index()
         finally:
             if os.path.exists(tmp):
                 os.unlink(tmp)
@@ -455,6 +459,7 @@ class FileStore:
             pass
 
     def _save_index(self) -> None:
+        """Serializza l'indice su disco con write atomica. Chiamare dentro self._lock."""
         payload = json.dumps(
             {"pool": self._idx_pool, "memories": self._idx_mem},
             ensure_ascii=False, indent=2,

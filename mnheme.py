@@ -154,28 +154,50 @@ class MemoryDB:
 
     def __init__(
         self,
-        path       : Union[str, Path] = "mnheme.mnheme",
+        path          : Union[str, Path] = "mnheme.mnheme",
         *,
-        files_dir  : Optional[Union[str, Path]] = None,
+        files_dir     : Optional[Union[str, Path]] = None,
+        fsync_policy  : str = "always",
+        fsync_every   : int = 50,
+        fsync_ms      : int = 200,
     ) -> None:
         """
         Parametri
         ---------
-        path      : path al file di log binario (default: "mnheme.mnheme")
-        files_dir : directory dove salvare i file multimediali
-                    (default: <stesso nome del log senza estensione>_files/)
-                    Es: "mente.mnheme" -> "mente_files/"
+        path         : path al file di log binario (default: "mnheme.mnheme")
+        files_dir    : directory file multimediali (default: <stem>_files/)
+        fsync_policy : "always" | "batch" | "never"
+                       "always" (default) — fsync ad ogni write, crash-safe
+                       "batch"            — un fsync ogni fsync_every record
+                       "never"            — nessun fsync, massima velocità
+        fsync_every  : record per batch prima del fsync (default: 50)
+        fsync_ms     : ms massimi tra due fsync in modalità batch (default: 200)
         """
-        self._storage = StorageEngine(path)
-        self._index   = IndexEngine()
-        n = self._index.rebuild(self._storage.scan())
-        self._path    = str(path)
-        self._loaded  = n
+        p = Path(path)
+        self._path = str(p)
 
-        # FileStore: cartella accanto al file .mnheme
+        # Punto 4: fsync_policy forwarded a StorageEngine
+        self._storage = StorageEngine(p,
+                                      fsync_policy=fsync_policy,
+                                      fsync_every=fsync_every,
+                                      fsync_ms=fsync_ms)
+
+        # Punto 1: indice persistente accanto al file .mnheme
+        index_path = p.parent / (p.stem + ".index.json") if str(p) != ":memory:" else None
+        self._index = IndexEngine(index_path)
+
+        # Prova a caricare l'indice dal disco prima di scansionare il log
+        log_size = self._storage.file_size()
+        if not self._index.try_load(log_size):
+            # Cache miss o log cresciuto: rebuild completo
+            self._index.rebuild(self._storage.scan())
+            self._index.flush(self._storage.file_size())
+
+        self._loaded = self._index.count()
+
+        # FileStore
         if files_dir is None:
-            base     = Path(path)
-            files_dir = base.parent / (base.stem + "_files")
+            files_dir = p.parent / (p.stem + "_files")
         self._files = FileStore(files_dir)
 
     # ── WRITE ────────────────────────────────
@@ -243,6 +265,8 @@ class MemoryDB:
         offset = self._storage.append(record)
         # 2. Aggiorna gli indici in RAM
         self._index.index_record(offset, record)
+        # 3. Flush indice su disco (punto 1)
+        self._index.flush(self._storage.file_size())
 
         return Memory(
             memory_id  = memory_id,
@@ -255,6 +279,84 @@ class MemoryDB:
             timestamp  = timestamp,
             checksum   = checksum,
         )
+
+    def remember_many(
+        self,
+        items: list[dict],
+    ) -> list[Memory]:
+        """
+        Registra N ricordi con un solo fsync — molto più veloce di N * remember().
+
+        Ogni elemento della lista è un dict con le stesse chiavi di remember():
+        concept, feeling, content, e opzionalmente media_type, note, tags.
+
+        Ritorna la lista dei Memory creati, nell'ordine degli input.
+
+        Esempio
+        -------
+        >>> memories = db.remember_many([
+        ...     {"concept": "Debito",   "feeling": "ansia",   "content": "..."},
+        ...     {"concept": "Famiglia", "feeling": "amore",   "content": "..."},
+        ...     {"concept": "Viaggio",  "feeling": "nostalgia","content": "..."},
+        ... ])
+        """
+        if not items:
+            return []
+
+        import hashlib as _hl
+        import uuid    as _uuid
+        from datetime import datetime as _dt, timezone as _tz
+
+        records  : list[dict]   = []
+        memories : list[Memory] = []
+
+        for item in items:
+            concept    = item.get("concept", "").strip()
+            feeling    = self._validate_feeling(item.get("feeling", "nostalgia"))
+            content    = item.get("content", "")
+            media_type = self._validate_media_type(item.get("media_type", MediaType.TEXT))
+            note       = item.get("note", "")
+            tags_list  = [t.strip() for t in item.get("tags", []) if t.strip()]
+
+            if not concept or not content:
+                raise MnhemeError("Ogni item deve avere 'concept' e 'content' non vuoti.")
+
+            memory_id = str(_uuid.uuid4())
+            timestamp = _dt.now(_tz.utc).isoformat()
+            checksum  = _hl.sha256(content.encode("utf-8")).hexdigest()
+
+            record = {
+                "memory_id":  memory_id,
+                "concept":    concept,
+                "feeling":    feeling,
+                "media_type": media_type,
+                "content":    content,
+                "note":       note,
+                "tags":       tags_list,
+                "timestamp":  timestamp,
+                "checksum":   checksum,
+            }
+            records.append(record)
+            memories.append(Memory(
+                memory_id  = memory_id,
+                concept    = concept,
+                feeling    = feeling,
+                media_type = media_type,
+                content    = content,
+                note       = note,
+                tags       = tuple(tags_list),
+                timestamp  = timestamp,
+                checksum   = checksum,
+            ))
+
+        # Un solo fsync per tutti i record
+        offsets = self._storage.append_batch(records)
+        for offset, record in zip(offsets, records):
+            self._index.index_record(offset, record)
+        # Flush indice su disco una sola volta per il batch (punto 1)
+        self._index.flush(self._storage.file_size())
+
+        return memories
 
     def remember_file(
         self,
@@ -466,19 +568,29 @@ class MemoryDB:
 
     def recall_by_tag(
         self,
-        tag   : str,
+        tag          : str,
         *,
-        limit : Optional[int] = None,
+        limit        : Optional[int] = 100,
+        oldest_first : bool = False,
     ) -> list[Memory]:
         """
         Richiama i ricordi che contengono un tag.
 
+        Parametri
+        ---------
+        limit        : max ricordi da ritornare (default: 100).
+                       Passa None per nessun limite.
+        oldest_first : ordine cronologico ascendente
+
         Esempio
         -------
         >>> db.recall_by_tag("casa")
+        >>> db.recall_by_tag("casa", limit=None)   # tutti
         """
-        offsets = self._index.offsets_by_tag(tag.strip())
-        return self._load_offsets(offsets, limit)
+        offsets = self._index.offsets_by_tag(tag.strip(), limit=limit)
+        if oldest_first:
+            offsets = list(reversed(offsets))
+        return self._load_offsets(offsets, None)   # limit già applicato nell'indice
 
     def search(
         self,
@@ -490,8 +602,14 @@ class MemoryDB:
         limit        : Optional[int] = None,
     ) -> list[Memory]:
         """
-        Ricerca full-text: scansiona tutti i ricordi.
-        (Operazione lineare — su dataset grandi usa indici specifici)
+        Ricerca full-text tramite indice invertito — O(k) invece di O(n).
+
+        Strategia
+        ---------
+        Tokenizza il testo cercato. Per ogni token usa l'indice invertito
+        per trovare i candidati. Interseca i candidati di tutti i token
+        (AND semantico). Se un token è troppo corto (<3 chars) o non è
+        nell'indice, cade in fallback con scansione lineare su quel token.
 
         Parametri
         ---------
@@ -499,15 +617,49 @@ class MemoryDB:
         in_content : cerca nel contenuto
         in_concept : cerca nel concetto
         in_note    : cerca nelle note
+        limit      : numero massimo di risultati
 
         Esempio
         -------
         >>> db.search("mutuo")
         >>> db.search("natale", in_concept=False)
         """
-        needle  = text.lower()
-        results = []
+        from index import _tokenize, _MIN_TOKEN_LEN
 
+        needle = text.strip().lower()
+        if not needle:
+            return []
+
+        tokens = _tokenize(needle)
+
+        # Se la query è tokenizzabile e tutti i token sono nell'indice
+        # → usa indice invertito (O(k) invece di O(n))
+        if tokens and all(self._index.has_word(t) for t in tokens):
+            # Intersezione degli offset di tutti i token (AND)
+            sets = [set(self._index.offsets_by_word(t)) for t in tokens]
+            candidate_offsets = sorted(sets[0].intersection(*sets[1:]), reverse=True)
+
+            if limit:
+                candidate_offsets = candidate_offsets[:limit]
+
+            records = self._storage.read_many(candidate_offsets)
+            results = []
+            for r in records:
+                if r is None:
+                    continue
+                match = False
+                if in_content and needle in r.get("content", "").lower():
+                    match = True
+                if not match and in_concept and needle in r.get("concept", "").lower():
+                    match = True
+                if not match and in_note and needle in r.get("note", "").lower():
+                    match = True
+                if match:
+                    results.append(self._record_to_memory(r))
+            return results
+
+        # Fallback: scansione lineare (per query troppo corte o token non in indice)
+        results = []
         for _, record in self._storage.scan():
             match = False
             if in_content and needle in record.get("content", "").lower():
@@ -520,8 +672,7 @@ class MemoryDB:
                 results.append(self._record_to_memory(record))
                 if limit and len(results) >= limit:
                     break
-
-        return list(reversed(results))  # più recenti prima
+        return list(reversed(results))
 
     # ── STATS ────────────────────────────────
 
@@ -576,6 +727,7 @@ class MemoryDB:
     def concept_timeline(self, concept: str) -> list[dict]:
         """
         Cronologia emotiva di un concetto (solo metadati, no content).
+        Usa read_many() — un solo lock per tutti i record del concetto.
 
         Esempio
         -------
@@ -583,17 +735,20 @@ class MemoryDB:
         [{'timestamp': '...', 'feeling': 'ansia', 'note': '...', 'tags': [...]}, ...]
         """
         offsets = self._index.timeline_offsets(concept.strip())
-        result  = []
-        for offset in offsets:
-            r = self._storage.read_at(offset)
-            if r:
-                result.append({
-                    "timestamp": r["timestamp"],
-                    "feeling":   r["feeling"],
-                    "note":      r.get("note", ""),
-                    "tags":      r.get("tags", []),
-                })
-        return result
+        if not offsets:
+            return []
+
+        # Punto 3: read_many acquisisce il lock una volta sola
+        records = self._storage.read_many(offsets)
+        return [
+            {
+                "timestamp": r["timestamp"],
+                "feeling":   r["feeling"],
+                "note":      r.get("note", ""),
+                "tags":      r.get("tags", []),
+            }
+            for r in records if r is not None
+        ]
 
     def feeling_distribution(self) -> dict[str, int]:
         """
@@ -755,15 +910,21 @@ class MemoryDB:
         return val
 
     def _load_offsets(self, offsets: list[int], limit: Optional[int]) -> list[Memory]:
-        """Carica i Memory dal file dato una lista di offset."""
+        """
+        Carica i Memory dal file dato una lista di offset.
+        Usa read_many() per acquisire il lock di lettura una sola volta
+        invece di N acquisizioni separate con read_at().
+        """
         if limit:
             offsets = offsets[:limit]
-        result = []
-        for offset in offsets:
-            record = self._storage.read_at(offset)
-            if record:
-                result.append(self._record_to_memory(record))
-        return result
+        if not offsets:
+            return []
+        records = self._storage.read_many(offsets)
+        return [
+            self._record_to_memory(r)
+            for r in records
+            if r is not None
+        ]
 
     def _record_to_memory(self, record: dict) -> Memory:
         return Memory(
@@ -779,8 +940,9 @@ class MemoryDB:
         )
 
     def close(self) -> None:
-        """Nessuna connessione da chiudere — il file viene aperto/chiuso ad ogni operazione."""
-        pass
+        """Flush dell'indice su disco e chiusura del file descriptor persistente."""
+        self._index.flush(self._storage.file_size())
+        self._storage.close()
 
     def __enter__(self) -> "MemoryDB":
         return self
