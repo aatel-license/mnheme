@@ -23,7 +23,7 @@ TEMPERATURE=0.3
 USE_MULTI_PROVIDER=false
 
 LM_STUDIO_URL=http://localhost:1234/v1/chat/completions
-LM_STUDIO_MODEL=mistral-7b-local
+LM_STUDIO_MODEL=nvidia/nemotron-3-nano-4b
 LM_STUDIO_API_KEY=
 LM_STUDIO_RPM=60
 
@@ -143,7 +143,7 @@ print(f"  {p_multi}")
 print("\n[10] Priority personalizzata")
 p_prio = LLMProvider.from_env(
     mock_env_path,
-    priority = ["groq", "anthropic", "lm-studio", "mistral"]
+    priority = ["lm-studio","groq", "anthropic", "mistral"]
 )
 print(f"  Provider attivo (primo in priority): {p_prio._active}")
 print(f"  Priority: {p_prio._priority}")
