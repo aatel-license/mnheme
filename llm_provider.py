@@ -318,6 +318,7 @@ def _build_anthropic(
     }
     headers = {
         "Content-Type":      "application/json",
+        "User-Agent":        "Mozilla/5.0 (compatible; MNHEME/1.0)",
         "x-api-key":         p.api_key,
         "anthropic-version": "2023-06-01",
     }
@@ -338,6 +339,7 @@ def _build_openai(
     }
     headers = {
         "Content-Type": "application/json",
+        "User-Agent":   "Mozilla/5.0 (compatible; MNHEME/1.0)",
     }
     # Bearer token solo se presente (istanze locali non ne hanno bisogno)
     if p.api_key:
