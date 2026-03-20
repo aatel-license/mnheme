@@ -8,7 +8,92 @@
 /* ── Config ─────────────────────────────────────────────── */
 let BASE_URL = 'http://localhost:8000';
 
-/* ── Feeling color map ───────────────────────────────────── */
+/* ── Theme config ────────────────────────────────────────── */
+const THEMES = [
+  /* dark */
+  { id: 'terminal',   label: 'Terminal',   dark: true,  bg: '#080c08', accent: '#4ade80' },
+  { id: 'midnight',   label: 'Midnight',   dark: true,  bg: '#060810', accent: '#38bdf8' },
+  { id: 'synthwave',  label: 'Synthwave',  dark: true,  bg: '#0d0515', accent: '#f472b6' },
+  { id: 'dracula',    label: 'Dracula',    dark: true,  bg: '#1e1f29', accent: '#bd93f9' },
+  { id: 'amber-crt',  label: 'Amber CRT',  dark: true,  bg: '#0a0800', accent: '#f59e0b' },
+  { id: 'blood-moon', label: 'Blood Moon', dark: true,  bg: '#0c0608', accent: '#f87171' },
+  { id: 'deep-ocean', label: 'Deep Ocean', dark: true,  bg: '#040e12', accent: '#2dd4bf' },
+  { id: 'obsidian',   label: 'Obsidian',   dark: true,  bg: '#0f0f12', accent: '#e2e8f0' },
+  { id: 'matrix',     label: 'Matrix',     dark: true,  bg: '#000000', accent: '#00ff41' },
+  { id: 'dusk',       label: 'Dusk',       dark: true,  bg: '#0f0a14', accent: '#fb923c' },
+  { id: 'neon-city',    label: 'Neon City',    dark: true,  bg: '#0a0f1f', accent: '#22c55e' },
+  { id: 'cyberpunk',    label: 'Cyberpunk',    dark: true,  bg: '#0b0a1a', accent: '#facc15' },
+  { id: 'void',         label: 'Void',         dark: true,  bg: '#050505', accent: '#a78bfa' },
+  { id: 'ember',        label: 'Ember',        dark: true,  bg: '#120708', accent: '#fb7185' },
+  { id: 'storm',        label: 'Storm',        dark: true,  bg: '#0c1118', accent: '#60a5fa' },
+  { id: 'toxic',        label: 'Toxic',        dark: true,  bg: '#0a120a', accent: '#84cc16' },
+  { id: 'galaxy',       label: 'Galaxy',       dark: true,  bg: '#0b0f2a', accent: '#818cf8' },
+  { id: 'infrared',     label: 'Infrared',     dark: true,  bg: '#140a0a', accent: '#ef4444' },
+  { id: 'deep-space',   label: 'Deep Space',   dark: true,  bg: '#020617', accent: '#38bdf8' },
+  { id: 'hacker',       label: 'Hacker',       dark: true,  bg: '#000000', accent: '#10b981' },
+
+  /* light */
+  { id: 'sky',          label: 'Sky',          dark: false, bg: '#e0f2fe', accent: '#0284c7' },
+  { id: 'sunrise',      label: 'Sunrise',      dark: false, bg: '#fff7ed', accent: '#f97316' },
+  { id: 'blossom',      label: 'Blossom',      dark: false, bg: '#fff1f2', accent: '#db2777' },
+  { id: 'ice',          label: 'Ice',          dark: false, bg: '#ecfeff', accent: '#0891b2' },
+  { id: 'meadow',       label: 'Meadow',       dark: false, bg: '#f7fee7', accent: '#65a30d' },
+  { id: 'cream',        label: 'Cream',        dark: false, bg: '#fffdf5', accent: '#a16207' },
+  { id: 'cotton',       label: 'Cotton',       dark: false, bg: '#f9fafb', accent: '#6b7280' },
+  { id: 'aqua',         label: 'Aqua',         dark: false, bg: '#ecfeff', accent: '#06b6d4' },
+  { id: 'lemon',        label: 'Lemon',        dark: false, bg: '#fefce8', accent: '#ca8a04' },
+  { id: 'orchid',       label: 'Orchid',       dark: false, bg: '#fdf4ff', accent: '#c026d3' },
+  { id: 'paper',      label: 'Paper',      dark: false, bg: '#faf6f0', accent: '#5c3d11' },
+  { id: 'arctic',     label: 'Arctic',     dark: false, bg: '#f0f7ff', accent: '#0369a1' },
+  { id: 'rose',       label: 'Rose',       dark: false, bg: '#fff0f3', accent: '#9f0a30' },
+  { id: 'solarized',  label: 'Solarized',  dark: false, bg: '#fdf6e3', accent: '#2aa198' },
+  { id: 'forest',     label: 'Forest',     dark: false, bg: '#f0f7f0', accent: '#14532d' },
+  { id: 'lavender',   label: 'Lavender',   dark: false, bg: '#f5f0ff', accent: '#5b21b6' },
+  { id: 'sepia',      label: 'Sepia',      dark: false, bg: '#f7f0e6', accent: '#78350f' },
+  { id: 'mint',       label: 'Mint',       dark: false, bg: '#f0fffe', accent: '#0f766e' },
+  { id: 'sand',       label: 'Sand',       dark: false, bg: '#fdf8ef', accent: '#92400e' },
+  { id: 'pearl',      label: 'Pearl',      dark: false, bg: '#f8f9fc', accent: '#312e81' },
+];
+
+function applyTheme(id) {
+  const theme = THEMES.find(t => t.id === id) || THEMES[0];
+  document.documentElement.setAttribute('data-theme', id);
+  localStorage.setItem('mnheme-theme', id);
+  const nameEl = document.getElementById('theme-current-name');
+  if (nameEl) nameEl.textContent = theme.label;
+  document.querySelectorAll('.theme-swatch').forEach(s => {
+    s.classList.toggle('active', s.dataset.theme === id);
+  });
+}
+
+function buildThemePicker() {
+  const darkEl  = document.getElementById('swatches-dark');
+  const lightEl = document.getElementById('swatches-light');
+  const active  = document.documentElement.getAttribute('data-theme') || 'dracula';
+
+  THEMES.forEach(t => {
+    const sw = document.createElement('button');
+    sw.className = 'theme-swatch' + (t.id === active ? ' active' : '');
+    sw.dataset.theme = t.id;
+    sw.title = t.label;
+    sw.style.setProperty('--sw-bg',     t.bg);
+    sw.style.setProperty('--sw-accent', t.accent);
+    sw.addEventListener('click', () => applyTheme(t.id));
+    (t.dark ? darkEl : lightEl).appendChild(sw);
+  });
+}
+
+// Init from localStorage
+(function () {
+  const saved = localStorage.getItem('mnheme-theme') || 'dracula';
+  const theme = THEMES.find(t => t.id === saved) || THEMES[0];
+  document.documentElement.setAttribute('data-theme', theme.id);
+  const nameEl = document.getElementById('theme-current-name');
+  if (nameEl) nameEl.textContent = theme.label;
+})();
+buildThemePicker();
+
+
 const FEELING_LABELS = {
   gioia: '✨ Joy', tristezza: '🌧 Sadness', rabbia: '🔥 Anger',
   paura: '🌑 Fear', nostalgia: '🍂 Nostalgia', amore: '❤ Love',
@@ -196,6 +281,77 @@ function esc(str) {
     .replace(/"/g,'&quot;');
 }
 
+/* ── Markdown renderer ───────────────────────────────────────
+   Converts markdown to safe HTML. Falls back gracefully if the
+   input contains no markdown — plain text is preserved as-is.
+   Supported: headings, bold, italic, inline code, code blocks,
+   blockquotes, unordered/ordered lists, horizontal rules, links.
+   ─────────────────────────────────────────────────────────── */
+function renderMarkdown(str) {
+  if (!str) return '';
+  let s = String(str);
+
+  // Escape HTML first so injected tags are inert
+  s = s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+  // Fenced code blocks  ```lang\n...\n```
+  s = s.replace(/```[\w]*\n?([\s\S]*?)```/g, (_, code) =>
+    `<pre class="md-code"><code>${code.trim()}</code></pre>`);
+
+  // Inline code  `code`
+  s = s.replace(/`([^`\n]+)`/g, '<code class="md-inline-code">$1</code>');
+
+  // Headings  ### H3 / ## H2 / # H1
+  s = s.replace(/^### (.+)$/gm, '<h3 class="md-h3">$1</h3>');
+  s = s.replace(/^## (.+)$/gm,  '<h2 class="md-h2">$1</h2>');
+  s = s.replace(/^# (.+)$/gm,   '<h1 class="md-h1">$1</h1>');
+
+  // Blockquote  > text
+  s = s.replace(/^&gt; (.+)$/gm, '<blockquote class="md-blockquote">$1</blockquote>');
+
+  // Horizontal rule  --- / ***
+  s = s.replace(/^[-*]{3,}\s*$/gm, '<hr class="md-hr">');
+
+  // Bold  **text** or __text__
+  s = s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  s = s.replace(/__(.+?)__/g,     '<strong>$1</strong>');
+
+  // Italic  *text* or _text_
+  s = s.replace(/\*([^*\n]+)\*/g, '<em>$1</em>');
+  s = s.replace(/_([^_\n]+)_/g,   '<em>$1</em>');
+
+  // Links  [label](url)
+  s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g,
+    '<a class="md-link" href="$2" target="_blank" rel="noopener">$1</a>');
+
+  // Unordered lists  - item / * item
+  s = s.replace(/((?:^[-*] .+\n?)+)/gm, match => {
+    const items = match.trim().split('\n')
+      .map(l => `<li>${l.replace(/^[-*] /, '')}</li>`).join('');
+    return `<ul class="md-ul">${items}</ul>`;
+  });
+
+  // Ordered lists  1. item
+  s = s.replace(/((?:^\d+\. .+\n?)+)/gm, match => {
+    const items = match.trim().split('\n')
+      .map(l => `<li>${l.replace(/^\d+\. /, '')}</li>`).join('');
+    return `<ol class="md-ol">${items}</ol>`;
+  });
+
+  // Paragraphs — wrap blocks separated by blank lines
+  // (skip lines that are already block-level HTML)
+  const blockTags = /^<(h[1-3]|ul|ol|li|pre|blockquote|hr)/;
+  s = s.split(/\n{2,}/).map(block => {
+    block = block.trim();
+    if (!block) return '';
+    if (blockTags.test(block)) return block;
+    // Single newlines within a paragraph → <br>
+    return `<p class="md-p">${block.replace(/\n/g,'<br>')}</p>`;
+  }).join('\n');
+
+  return s;
+}
+
 function loading(container) {
   container.innerHTML = `<div class="empty-state"><span class="loading"></span> Loading…</div>`;
 }
@@ -371,12 +527,34 @@ async function loadConcepts() {
           <div class="memory-concept">${esc(c.concept)}</div>
           <div class="concept-count">${c.total} memor${c.total !== 1 ? 'ies' : 'y'}</div>
           <div class="concept-feelings">${feelingTags}</div>
+          <div class="concept-card-actions">
+            <button class="concept-action-btn timeline-btn" data-concept="${esc(c.concept)}" title="Open Timeline">
+              <span>⟿</span> Timeline
+            </button>
+            <button class="concept-action-btn reflect-btn" data-concept="${esc(c.concept)}" title="Reflect with Brain">
+              <span>⟳</span> Reflect
+            </button>
+          </div>
         </div>`;
     }).join('');
 
-    // Click to open detail
+    // Click card body → open detail; click action buttons → navigate
     container.querySelectorAll('.concept-card').forEach(card => {
       card.addEventListener('click', () => openConceptDetail(card.dataset.concept));
+    });
+
+    container.querySelectorAll('.timeline-btn').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        goToTimeline(btn.dataset.concept);
+      });
+    });
+
+    container.querySelectorAll('.reflect-btn').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        goToReflect(btn.dataset.concept);
+      });
     });
   } catch (e) {
     showError(container, e.detail || 'Failed to load concepts');
@@ -389,6 +567,38 @@ async function openConceptDetail(concept) {
   document.getElementById('concept-detail').style.display = 'block';
   document.getElementById('detail-results').innerHTML = '';
   document.getElementById('detail-feeling').value = '';
+}
+
+/* Navigate to Timeline view and trigger load for a given concept */
+function goToTimeline(concept) {
+  // Switch nav + view
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  const navBtn = document.querySelector('.nav-btn[data-view="timeline"]');
+  if (navBtn) navBtn.classList.add('active');
+  const view = document.getElementById('view-timeline');
+  if (view) view.classList.add('active');
+
+  // Pre-fill and fire
+  document.getElementById('timeline-concept').value = concept;
+  loadTimeline();
+}
+
+/* Navigate to Reflect view and trigger reflection for a given concept */
+function goToReflect(concept) {
+  // Switch nav + view
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  const navBtn = document.querySelector('.nav-btn[data-view="reflect"]');
+  if (navBtn) navBtn.classList.add('active');
+  const view = document.getElementById('view-reflect');
+  if (view) view.classList.add('active');
+
+  // Pre-fill and fire
+  document.getElementById('reflect-concept').value = concept;
+  checkBrainStatus().then(() => {
+    document.getElementById('btn-reflect').click();
+  });
 }
 
 document.getElementById('btn-detail-fetch').addEventListener('click', async () => {
@@ -609,6 +819,323 @@ document.getElementById('btn-download').addEventListener('click', () => {
   a.click();
   URL.revokeObjectURL(a.href);
   toast('Download started', 'success');
+});
+
+/* ═══════════════════════════════════════════════════════════
+   BRAIN — LLM helpers
+   ═══════════════════════════════════════════════════════════ */
+
+const BRAIN_VIEWS = ['perceive','ask','reflect','dream','introspect','summarize'];
+
+/* Render the amber status bar inside each Brain view */
+function setBrainBar(viewId, { ok, provider, model, error } = {}) {
+  const el = document.getElementById('brain-status-' + viewId);
+  if (!el) return;
+  if (ok) {
+    el.className   = 'brain-bar ok';
+    el.innerHTML   = `<span class="brain-status-dot on"></span>
+      Brain active &nbsp;·&nbsp; <span style="opacity:.7">${esc(provider)}</span>
+      &nbsp;/&nbsp; <span style="opacity:.5">${esc(model)}</span>`;
+  } else {
+    el.className   = 'brain-bar err';
+    el.innerHTML   = `<span class="brain-status-dot off"></span>
+      Brain offline &nbsp;·&nbsp; ${esc(error || 'LLM non disponibile — configura .env')}`;
+  }
+}
+
+/* Check /brain/status and update all bars */
+async function checkBrainStatus() {
+  try {
+    const s = await GET('/brain/status');
+    const info = { ok: s.available, provider: s.provider, model: s.model };
+    BRAIN_VIEWS.forEach(v => setBrainBar(v, info));
+    return s.available;
+  } catch (e) {
+    const info = { ok: false, error: e.detail || 'Server non raggiungibile' };
+    BRAIN_VIEWS.forEach(v => setBrainBar(v, info));
+    return false;
+  }
+}
+
+/* Generic brain response container */
+function brainPanel(id) {
+  const el = document.getElementById(id);
+  el.classList.add('visible');
+  el.classList.remove('error');
+  return el;
+}
+
+function brainError(id, msg) {
+  const el = document.getElementById(id);
+  el.classList.add('visible', 'error');
+  el.innerHTML = `
+    <div class="brain-response-header">
+      <span>✗ Error</span>
+    </div>
+    <div class="brain-response-body" style="color:var(--red)">${esc(msg)}</div>`;
+}
+
+function brainLoading(id, label) {
+  const el = brainPanel(id);
+  el.innerHTML = `
+    <div class="brain-response-header">
+      <span><span class="loading"></span> ${label}…</span>
+    </div>`;
+  return el;
+}
+
+function disableBtn(id, label) {
+  const btn = document.getElementById(id);
+  btn.disabled = true;
+  btn._orig    = btn.innerHTML;
+  btn.innerHTML = `<span class="loading"></span> ${label}`;
+  return () => { btn.disabled = false; btn.innerHTML = btn._orig; };
+}
+
+/* ── PERCEIVE ──────────────────────────────────────────────── */
+
+document.getElementById('btn-perceive').addEventListener('click', async () => {
+  const raw     = document.getElementById('perceive-input').value.trim();
+  const concept = document.getElementById('perceive-concept').value.trim();
+  const feeling = document.getElementById('perceive-feeling').value;
+  const note    = document.getElementById('perceive-note').value.trim();
+  if (!raw) { toast('Inserisci un input.', 'info'); return; }
+
+  const restore = disableBtn('btn-perceive', 'Perceiving');
+  brainLoading('perceive-result', 'Il Brain sta percependo');
+  const t0 = performance.now();
+
+  try {
+    const r = await POST('/brain/perceive', {
+      raw_input: raw,
+      concept:   concept || null,
+      feeling:   feeling || null,
+      note,
+    });
+    const ms   = Math.round(performance.now() - t0);
+    const tags = (r.extracted_tags || [])
+      .map(t => `<span class="perceive-chip tag">${esc(t)}</span>`).join('');
+
+    const el = brainPanel('perceive-result');
+    el.innerHTML = `
+      <div class="brain-response-header">
+        <span>✦ Memory perceived</span>
+        <span class="latency">${ms}ms</span>
+      </div>
+      <div class="perceive-card">
+        <div class="perceive-extracted">
+          <span class="perceive-chip concept">◈ ${esc(r.extracted_concept)}</span>
+          <span class="perceive-chip feeling">${esc(r.extracted_feeling)}</span>
+          ${tags}
+        </div>
+        <div class="perceive-enriched md-content">${renderMarkdown(r.enriched_content)}</div>
+        <div class="perceive-id">memory_id: ${r.memory_id}</div>
+      </div>`;
+    toast(`Percezione salvata: ${r.extracted_concept} / ${r.extracted_feeling}`, 'success');
+    checkConnection();
+  } catch (e) {
+    brainError('perceive-result', e.detail || String(e));
+    toast('Perceive fallito', 'error');
+  } finally {
+    restore();
+  }
+});
+
+/* ── ASK ───────────────────────────────────────────────────── */
+
+document.getElementById('btn-ask').addEventListener('click', doAsk);
+document.getElementById('ask-question').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && e.ctrlKey) doAsk();
+});
+
+async function doAsk() {
+  const question = document.getElementById('ask-question').value.trim();
+  const max      = parseInt(document.getElementById('ask-max').value) || 15;
+  if (!question) { toast('Inserisci una domanda.', 'info'); return; }
+
+  const restore = disableBtn('btn-ask', 'Asking');
+  brainLoading('ask-result', 'Il Brain sta cercando nei ricordi');
+  const t0 = performance.now();
+
+  try {
+    const r  = await POST('/brain/ask', { question, max_memories: max });
+    const ms = Math.round(performance.now() - t0);
+    const el = brainPanel('ask-result');
+    el.innerHTML = `
+      <div class="brain-response-header">
+        <span>✦ Answer</span>
+        <span class="latency">${ms}ms</span>
+      </div>
+      <div class="ask-card">
+        <div class="ask-answer md-content">${renderMarkdown(r.answer)}</div>
+        <div class="ask-meta">
+          <span>${r.memories_used} memorie usate come contesto</span>
+          <span class="ask-confidence">${esc(r.confidence_note)}</span>
+          <span style="margin-left:auto">${esc(r.provider_used)}</span>
+        </div>
+      </div>`;
+  } catch (e) {
+    brainError('ask-result', e.detail || String(e));
+    toast('Ask fallito', 'error');
+  } finally {
+    restore();
+  }
+}
+
+/* ── REFLECT ───────────────────────────────────────────────── */
+
+document.getElementById('btn-reflect').addEventListener('click', async () => {
+  const concept = document.getElementById('reflect-concept').value.trim();
+  if (!concept) { toast('Inserisci un concetto.', 'info'); return; }
+
+  const restore = disableBtn('btn-reflect', 'Reflecting');
+  brainLoading('reflect-result', `Analisi emotiva di "${concept}"`);
+  const t0 = performance.now();
+
+  try {
+    const r  = await GET(`/brain/reflect/${encodeURIComponent(concept)}`);
+    const ms = Math.round(performance.now() - t0);
+    const el = brainPanel('reflect-result');
+    el.innerHTML = `
+      <div class="brain-response-header">
+        <span>✦ Reflection — ${esc(r.concept)}</span>
+        <span class="latency">${ms}ms &nbsp;·&nbsp; ${r.memories} memorie</span>
+      </div>
+      <div class="reflect-card">
+        ${r.arc ? `<div class="reflect-arc md-content">${renderMarkdown(r.arc)}</div>` : ''}
+        <div class="reflect-text md-content">${renderMarkdown(r.reflection)}</div>
+      </div>`;
+  } catch (e) {
+    brainError('reflect-result', e.detail || String(e));
+    toast('Reflect fallito', 'error');
+  } finally {
+    restore();
+  }
+});
+
+/* ── DREAM ─────────────────────────────────────────────────── */
+
+document.getElementById('btn-dream').addEventListener('click', async () => {
+  const n       = parseInt(document.getElementById('dream-n').value) || 8;
+  const restore = disableBtn('btn-dream', 'Dreaming');
+  brainLoading('dream-result', `Campionamento ${n} ricordi da sentimenti diversi`);
+  const t0 = performance.now();
+
+  try {
+    const r  = await GET(`/brain/dream?n_memories=${n}`);
+    const ms = Math.round(performance.now() - t0);
+
+    // Per avere i dettagli dei ricordi campionati dobbiamo
+    // fare una seconda chiamata a /memories/search o usare i dati del result
+    // Il backend non ritorna i Memory, solo il testo delle connessioni.
+    const el = brainPanel('dream-result');
+    el.innerHTML = `
+      <div class="brain-response-header">
+        <span>✦ Dream</span>
+        <span class="latency">${ms}ms &nbsp;·&nbsp; ${r.memories} memorie campionate</span>
+      </div>
+      <div class="dream-card">
+        <div class="dream-connections md-content">${renderMarkdown(r.connections)}</div>
+        <div style="margin-top:12px;font-size:10px;color:var(--muted);font-family:var(--mono)">
+          Provider: ${esc(r.provider_used)}
+        </div>
+      </div>`;
+  } catch (e) {
+    brainError('dream-result', e.detail || String(e));
+    toast('Dream fallito', 'error');
+  } finally {
+    restore();
+  }
+});
+
+/* ── INTROSPECT ────────────────────────────────────────────── */
+
+document.getElementById('btn-introspect').addEventListener('click', async () => {
+  const restore = disableBtn('btn-introspect', 'Introspecting');
+  brainLoading('introspect-result', 'Analisi dell\'intera memoria');
+  const t0 = performance.now();
+
+  try {
+    const r  = await GET('/brain/introspect');
+    const ms = Math.round(performance.now() - t0);
+
+    const chips = (r.dominant_concepts || [])
+      .map(c => `<span class="perceive-chip concept">${esc(c)}</span>`).join('');
+
+    const emoRows = Object.entries(r.emotional_map || {})
+      .sort((a,b) => b[1]-a[1])
+      .map(([f,n]) => `
+        <div class="emomap-item">
+          <span>${FEELING_LABELS[f] || f}</span>
+          <span class="emomap-count">${n}</span>
+        </div>`).join('');
+
+    const el = brainPanel('introspect-result');
+    el.innerHTML = `
+      <div class="brain-response-header">
+        <span>✦ Introspection</span>
+        <span class="latency">${ms}ms &nbsp;·&nbsp; ${r.total_memories} memorie analizzate</span>
+      </div>
+      <div class="introspect-card">
+        ${chips ? `<div class="introspect-dominant">${chips}</div>` : ''}
+        <div class="introspect-portrait md-content">${renderMarkdown(r.portrait)}</div>
+        ${emoRows ? `<div class="introspect-emomap">${emoRows}</div>` : ''}
+        <div style="margin-top:12px;font-size:10px;color:var(--muted);font-family:var(--mono)">
+          Provider: ${esc(r.provider_used)}
+        </div>
+      </div>`;
+  } catch (e) {
+    brainError('introspect-result', e.detail || String(e));
+    toast('Introspect fallito', 'error');
+  } finally {
+    restore();
+  }
+});
+
+/* ── SUMMARIZE ─────────────────────────────────────────────── */
+
+document.getElementById('btn-summarize').addEventListener('click', async () => {
+  const concept = document.getElementById('sum-concept').value.trim();
+  const feeling = document.getElementById('sum-feeling').value;
+  const style   = document.getElementById('sum-style').value;
+  const limit   = parseInt(document.getElementById('sum-limit').value) || 20;
+
+  const restore = disableBtn('btn-summarize', 'Summarizing');
+  brainLoading('summarize-result', `Stile ${style} — raccogliendo ricordi`);
+  const t0 = performance.now();
+
+  try {
+    const r  = await POST('/brain/summarize', { concept: concept||null, feeling: feeling||null, style, limit });
+    const ms = Math.round(performance.now() - t0);
+    const el = brainPanel('summarize-result');
+    el.innerHTML = `
+      <div class="brain-response-header">
+        <span>✦ Summary — ${esc(style)}</span>
+        <span class="latency">${ms}ms &nbsp;·&nbsp; ${r.memories_used} memorie</span>
+      </div>
+      <div class="summarize-card">
+        <div class="summarize-meta">
+          ${concept ? `concept: ${esc(concept)} &nbsp;·&nbsp;` : ''}
+          ${feeling ? `feeling: ${esc(feeling)} &nbsp;·&nbsp;` : ''}
+          style: ${esc(style)}
+        </div>
+        <div class="summarize-text md-content">${renderMarkdown(r.text)}</div>
+      </div>`;
+  } catch (e) {
+    brainError('summarize-result', e.detail || String(e));
+    toast('Summarize fallito', 'error');
+  } finally {
+    restore();
+  }
+});
+
+/* ── Check Brain when switching to a Brain view ───────────── */
+document.querySelectorAll('.nav-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (BRAIN_VIEWS.includes(btn.dataset.view)) {
+      checkBrainStatus();
+    }
+  });
 });
 
 /* ═══════════════════════════════════════════════════════════

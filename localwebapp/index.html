@@ -65,7 +65,39 @@
     <button class="nav-btn" data-view="export">
       <span class="nav-icon">↗</span> Export
     </button>
+
+    <div class="nav-group-label">Brain · LLM</div>
+    <button class="nav-btn" data-view="perceive">
+      <span class="nav-icon">◈</span> Perceive
+    </button>
+    <button class="nav-btn" data-view="ask">
+      <span class="nav-icon">?</span> Ask
+    </button>
+    <button class="nav-btn" data-view="reflect">
+      <span class="nav-icon">⟳</span> Reflect
+    </button>
+    <button class="nav-btn" data-view="dream">
+      <span class="nav-icon">~</span> Dream
+    </button>
+    <button class="nav-btn" data-view="introspect">
+      <span class="nav-icon">◎</span> Introspect
+    </button>
+    <button class="nav-btn" data-view="summarize">
+      <span class="nav-icon">≡</span> Summarize
+    </button>
   </nav>
+
+  <!-- Theme Picker -->
+  <div class="theme-picker">
+    <div class="theme-picker-header">
+      <span class="theme-picker-label">Theme</span>
+      <span class="theme-current-name" id="theme-current-name">Terminal</span>
+    </div>
+    <div class="theme-group-label">— dark</div>
+    <div class="theme-swatches" id="swatches-dark"></div>
+    <div class="theme-group-label">— light</div>
+    <div class="theme-swatches" id="swatches-light"></div>
+  </div>
 
   <div class="sidebar-footer">
     <div class="stat-pill" id="total-memories">— memories</div>
@@ -367,6 +399,197 @@
     </div>
 
     <div class="response-area" id="export-result"></div>
+  </section>
+
+  <!-- ── BRAIN STATUS BAR (shared across brain views) ── -->
+  <div id="brain-status-bar" style="display:none">
+    <span class="brain-status-dot" id="brain-dot"></span>
+    <span id="brain-status-text">checking brain…</span>
+    <span id="brain-provider-info"></span>
+  </div>
+
+  <!-- ── PERCEIVE ── -->
+  <section class="view" id="view-perceive">
+    <div class="view-header">
+      <h1 class="brain-title">Perceive</h1>
+      <p class="view-desc">Input grezzo → LLM estrae concept, feeling, tags e arricchisce il contenuto.</p>
+    </div>
+    <div id="brain-status-perceive" class="brain-bar"></div>
+    <div class="form-card">
+      <div class="field">
+        <label>Input grezzo <span class="required">*</span></label>
+        <textarea id="perceive-input" rows="4" placeholder="Scrivi liberamente un pensiero, evento, emozione…"></textarea>
+      </div>
+      <div class="form-row">
+        <div class="field">
+          <label>Concept <span class="optional">override LLM</span></label>
+          <input type="text" id="perceive-concept" placeholder="auto">
+        </div>
+        <div class="field">
+          <label>Feeling <span class="optional">override LLM</span></label>
+          <select id="perceive-feeling">
+            <option value="">auto</option>
+            <option value="gioia">✨ Joy</option>
+            <option value="tristezza">🌧 Sadness</option>
+            <option value="rabbia">🔥 Anger</option>
+            <option value="paura">🌑 Fear</option>
+            <option value="nostalgia">🍂 Nostalgia</option>
+            <option value="amore">❤ Love</option>
+            <option value="malinconia">🌊 Melancholy</option>
+            <option value="serenità">🌿 Serenity</option>
+            <option value="sorpresa">⚡ Surprise</option>
+            <option value="ansia">🌀 Anxiety</option>
+            <option value="gratitudine">✿ Gratitude</option>
+            <option value="vergogna">◈ Shame</option>
+            <option value="orgoglio">▲ Pride</option>
+            <option value="noia">— Boredom</option>
+            <option value="curiosità">◎ Curiosity</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label>Note <span class="optional">opzionale</span></label>
+        <input type="text" id="perceive-note" placeholder="Annotazione manuale…">
+      </div>
+      <div class="form-actions">
+        <button class="btn-brain" id="btn-perceive">
+          <span class="btn-icon">◈</span> Perceive
+        </button>
+      </div>
+    </div>
+    <div class="brain-response" id="perceive-result"></div>
+  </section>
+
+  <!-- ── ASK ── -->
+  <section class="view" id="view-ask">
+    <div class="view-header">
+      <h1 class="brain-title">Ask</h1>
+      <p class="view-desc">RAG su memoria personale — risponde usando solo i tuoi ricordi reali come contesto.</p>
+    </div>
+    <div id="brain-status-ask" class="brain-bar"></div>
+    <div class="form-card">
+      <div class="field">
+        <label>Domanda <span class="required">*</span></label>
+        <textarea id="ask-question" rows="3" placeholder="Come mi sento rispetto al denaro? C'è qualcosa di irrisolto con la famiglia?"></textarea>
+      </div>
+      <div class="form-row">
+        <div class="field">
+          <label>Max memories</label>
+          <input type="number" id="ask-max" value="15" min="1" max="50">
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn-brain" id="btn-ask">
+          <span class="btn-icon">?</span> Ask
+        </button>
+      </div>
+    </div>
+    <div class="brain-response" id="ask-result"></div>
+  </section>
+
+  <!-- ── REFLECT ── -->
+  <section class="view" id="view-reflect">
+    <div class="view-header">
+      <h1 class="brain-title">Reflect</h1>
+      <p class="view-desc">Analisi dell'evoluzione emotiva di un concetto nel tempo — arco narrativo e pattern.</p>
+    </div>
+    <div id="brain-status-reflect" class="brain-bar"></div>
+    <div class="filter-bar">
+      <div class="filter-group" style="flex:1">
+        <label>Concept</label>
+        <input type="text" id="reflect-concept" placeholder="Debito, Famiglia, Lavoro…">
+      </div>
+      <button class="btn-brain" id="btn-reflect">
+        <span class="btn-icon">⟳</span> Reflect
+      </button>
+    </div>
+    <div class="brain-response" id="reflect-result"></div>
+  </section>
+
+  <!-- ── DREAM ── -->
+  <section class="view" id="view-dream">
+    <div class="view-header">
+      <h1 class="brain-title">Dream</h1>
+      <p class="view-desc">Associazione libera — trova il filo nascosto tra ricordi distanti. Simula il consolidamento onirico.</p>
+    </div>
+    <div id="brain-status-dream" class="brain-bar"></div>
+    <div class="filter-bar">
+      <div class="filter-group">
+        <label>Memories to sample</label>
+        <input type="number" id="dream-n" value="8" min="2" max="20">
+      </div>
+      <button class="btn-brain" id="btn-dream">
+        <span class="btn-icon">~</span> Dream
+      </button>
+    </div>
+    <div class="brain-response" id="dream-result"></div>
+  </section>
+
+  <!-- ── INTROSPECT ── -->
+  <section class="view" id="view-introspect">
+    <div class="view-header">
+      <h1 class="brain-title">Introspect</h1>
+      <p class="view-desc">Ritratto psicologico completo — pattern, tensioni, risorse, frase essenziale.</p>
+    </div>
+    <div id="brain-status-introspect" class="brain-bar"></div>
+    <div class="filter-bar">
+      <button class="btn-brain" id="btn-introspect">
+        <span class="btn-icon">◎</span> Introspect
+      </button>
+    </div>
+    <div class="brain-response" id="introspect-result"></div>
+  </section>
+
+  <!-- ── SUMMARIZE ── -->
+  <section class="view" id="view-summarize">
+    <div class="view-header">
+      <h1 class="brain-title">Summarize</h1>
+      <p class="view-desc">Riassume un gruppo di ricordi — stile narrativo, analitico o poetico.</p>
+    </div>
+    <div id="brain-status-summarize" class="brain-bar"></div>
+    <div class="form-card">
+      <div class="form-row">
+        <div class="field">
+          <label>Concept <span class="optional">opzionale</span></label>
+          <input type="text" id="sum-concept" placeholder="Tutti i concetti">
+        </div>
+        <div class="field">
+          <label>Feeling <span class="optional">opzionale</span></label>
+          <select id="sum-feeling">
+            <option value="">Tutti</option>
+            <option value="gioia">Joy</option>
+            <option value="tristezza">Sadness</option>
+            <option value="nostalgia">Nostalgia</option>
+            <option value="amore">Love</option>
+            <option value="ansia">Anxiety</option>
+            <option value="paura">Fear</option>
+            <option value="orgoglio">Pride</option>
+            <option value="malinconia">Melancholy</option>
+            <option value="serenità">Serenity</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="field">
+          <label>Style</label>
+          <select id="sum-style">
+            <option value="narrativo">Narrativo</option>
+            <option value="analitico">Analitico</option>
+            <option value="poetico">Poetico</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Max memories</label>
+          <input type="number" id="sum-limit" value="20" min="1" max="100">
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn-brain" id="btn-summarize">
+          <span class="btn-icon">≡</span> Summarize
+        </button>
+      </div>
+    </div>
+    <div class="brain-response" id="summarize-result"></div>
   </section>
 
 </main>

@@ -6,6 +6,8 @@ Avvia con:
     uvicorn mnheme_api:app --reload --port 8000
 
 Documentazione interattiva: http://localhost:8000/docs
+
+Endpoint Brain richiedono un .env con almeno un provider LLM configurato.
 """
 
 try:
@@ -19,9 +21,24 @@ import sys, os
 sys.path.insert(0, os.path.dirname(__file__))
 
 from typing import Optional, List
-from mnheme import MemoryDB, Feeling, MediaType, MnhemeError
+from mnheme       import MemoryDB, Feeling, MediaType, MnhemeError
+from llm_provider import LLMProvider
+from brain        import Brain
 
 db = MemoryDB("mnheme.mnheme")
+
+# Brain — opzionale: attivo solo se .env è configurato
+_brain: Optional[Brain] = None
+
+def get_brain() -> Brain:
+    global _brain
+    if _brain is None:
+        try:
+            llm    = LLMProvider.from_env(".env", active="lm-studio")
+            _brain = Brain(db, llm)
+        except Exception as e:
+            raise HTTPException(503, detail=f"Brain non disponibile: {e}. Configura .env con almeno un provider LLM.")
+    return _brain
 
 app = FastAPI(
     title="MNHEME API",
@@ -30,7 +47,7 @@ app = FastAPI(
 )
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["GET","POST"], allow_headers=["*"])
 
-# ── Schemi ──────────────────────────────────────
+# ── Schemi DB ────────────────────────────────────
 
 class MemoryIn(BaseModel):
     concept    : str           = Field(...,  example="Debito")
@@ -148,3 +165,193 @@ def export(
     include_content : bool          = Query(True),
 ):
     return db.export_json(concept=concept, feeling=feeling, include_content=include_content)
+
+
+# ── Schemi Brain ─────────────────────────────────
+
+class PerceiveIn(BaseModel):
+    raw_input : str            = Field(...,   example="Ho aperto la busta dalla banca. Le mani tremavano.")
+    concept   : Optional[str] = Field(None,  example="Debito")
+    feeling   : Optional[str] = Field(None,  example="paura")
+    tags      : List[str]     = Field(default_factory=list)
+    note      : str           = Field("",    example="Appunto manuale")
+
+class PerceiveOut(BaseModel):
+    memory_id         : str
+    extracted_concept : str
+    extracted_feeling : str
+    extracted_tags    : List[str]
+    enriched_content  : str
+    raw_input         : str
+
+class AskIn(BaseModel):
+    question     : str           = Field(..., example="Come mi sento rispetto al denaro?")
+    max_memories : int           = Field(15,  example=15)
+    concepts     : Optional[List[str]] = Field(None)
+
+class AskOut(BaseModel):
+    question        : str
+    answer          : str
+    memories_used   : int
+    provider_used   : str
+    confidence_note : str
+
+class ReflectOut(BaseModel):
+    concept    : str
+    reflection : str
+    arc        : str
+    memories   : int
+
+class DreamOut(BaseModel):
+    connections  : str
+    provider_used: str
+    memories     : int
+
+class IntrospectOut(BaseModel):
+    portrait          : str
+    dominant_concepts : List[str]
+    emotional_map     : dict
+    total_memories    : int
+    provider_used     : str
+
+class SummarizeIn(BaseModel):
+    concept : Optional[str] = Field(None,       example="Famiglia")
+    feeling : Optional[str] = Field(None,       example="amore")
+    style   : str           = Field("narrativo", example="narrativo")
+    limit   : int           = Field(20,          example=20)
+
+class BrainStatusOut(BaseModel):
+    available     : bool
+    provider      : Optional[str]
+    model         : Optional[str]
+    total_memories: int
+
+
+# ── Brain endpoints ──────────────────────────────
+
+@app.get("/brain/status", response_model=BrainStatusOut,
+         summary="Verifica se il Brain LLM è disponibile")
+def brain_status():
+    try:
+        b = get_brain()
+        p = b._llm.active_profile
+        return BrainStatusOut(
+            available      = True,
+            provider       = p.name,
+            model          = p.model,
+            total_memories = db.count(),
+        )
+    except HTTPException:
+        return BrainStatusOut(available=False, provider=None, model=None, total_memories=db.count())
+
+
+@app.post("/brain/perceive", response_model=PerceiveOut, status_code=201,
+          summary="Percepisci un input grezzo — LLM estrae concept, feeling, tags e arricchisce")
+def brain_perceive(body: PerceiveIn):
+    b = get_brain()
+    try:
+        r = b.perceive(
+            body.raw_input,
+            concept = body.concept or None,
+            feeling = body.feeling or None,
+            tags    = body.tags or None,
+            note    = body.note,
+        )
+        return PerceiveOut(
+            memory_id         = r.memory.memory_id,
+            extracted_concept = r.extracted_concept,
+            extracted_feeling = r.extracted_feeling,
+            extracted_tags    = r.extracted_tags,
+            enriched_content  = r.enriched_content,
+            raw_input         = r.raw_input,
+        )
+    except Exception as e:
+        raise HTTPException(500, detail=str(e))
+
+
+@app.post("/brain/ask", response_model=AskOut,
+          summary="RAG su memoria personale — risponde usando solo i ricordi reali")
+def brain_ask(body: AskIn):
+    b = get_brain()
+    try:
+        r = b.ask(body.question, max_memories=body.max_memories, concepts=body.concepts)
+        return AskOut(
+            question        = r.question,
+            answer          = r.answer,
+            memories_used   = len(r.memories_used),
+            provider_used   = r.provider_used,
+            confidence_note = r.confidence_note,
+        )
+    except Exception as e:
+        raise HTTPException(500, detail=str(e))
+
+
+@app.get("/brain/reflect/{concept}", response_model=ReflectOut,
+         summary="Analisi emotiva di un concetto nel tempo")
+def brain_reflect(concept: str):
+    b = get_brain()
+    try:
+        r = b.reflect(concept)
+        return ReflectOut(
+            concept    = r.concept,
+            reflection = r.reflection,
+            arc        = r.arc,
+            memories   = len(r.memories),
+        )
+    except ValueError as e:
+        raise HTTPException(404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(500, detail=str(e))
+
+
+@app.get("/brain/dream", response_model=DreamOut,
+         summary="Associazione libera — connessioni inattese tra ricordi distanti")
+def brain_dream(n_memories: int = Query(8, ge=2, le=30)):
+    b = get_brain()
+    try:
+        r = b.dream(n_memories=n_memories)
+        return DreamOut(
+            connections   = r.connections,
+            provider_used = r.provider_used,
+            memories      = len(r.memories),
+        )
+    except ValueError as e:
+        raise HTTPException(400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(500, detail=str(e))
+
+
+@app.get("/brain/introspect", response_model=IntrospectOut,
+         summary="Ritratto psicologico completo basato su tutti i ricordi")
+def brain_introspect():
+    b = get_brain()
+    try:
+        r = b.introspect()
+        return IntrospectOut(
+            portrait          = r.portrait,
+            dominant_concepts = r.dominant_concepts,
+            emotional_map     = r.emotional_map,
+            total_memories    = r.total_memories,
+            provider_used     = r.provider_used,
+        )
+    except ValueError as e:
+        raise HTTPException(400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(500, detail=str(e))
+
+
+@app.post("/brain/summarize",
+          summary="Riassume un gruppo di ricordi — narrativo, analitico o poetico")
+def brain_summarize(body: SummarizeIn):
+    b = get_brain()
+    try:
+        if body.concept:
+            memories = db.recall(body.concept, feeling=body.feeling, limit=body.limit)
+        elif body.feeling:
+            memories = db.recall_by_feeling(body.feeling, limit=body.limit)
+        else:
+            memories = db.recall_all(limit=body.limit)
+        text = b.summarize(memories, style=body.style)
+        return {"text": text, "memories_used": len(memories), "style": body.style}
+    except Exception as e:
+        raise HTTPException(500, detail=str(e))
