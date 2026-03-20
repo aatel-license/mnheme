@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MNHEME — API Console</title>
+  <link rel="stylesheet" href="api.css">
+</head>
+<body>
+
+<!-- Scanlines overlay -->
+<div class="scanlines" aria-hidden="true"></div>
+
+<!-- ═══════════════ SIDEBAR ═══════════════ -->
+<aside id="sidebar">
+
+  <div class="sidebar-header">
+    <div class="logo-mark">
+      <span class="logo-dot"></span>
+      <span class="logo-dot"></span>
+      <span class="logo-dot"></span>
+    </div>
+    <div class="logo-text">MNHEME</div>
+    <div class="logo-sub">API CONSOLE</div>
+  </div>
+
+  <div class="server-status" id="server-status">
+    <span class="status-dot" id="status-dot"></span>
+    <span id="status-label">connecting...</span>
+    <span class="status-url" id="status-url">localhost:8000</span>
+  </div>
+
+  <div class="server-config">
+    <input type="text" id="api-url" value="http://localhost:8000" placeholder="http://localhost:8000">
+    <button id="btn-connect">Connect</button>
+  </div>
+
+  <nav class="nav-sections">
+    <div class="nav-group-label">Memory</div>
+    <button class="nav-btn active" data-view="new-memory">
+      <span class="nav-icon">✦</span> New Memory
+    </button>
+    <button class="nav-btn" data-view="browse">
+      <span class="nav-icon">◈</span> Browse
+    </button>
+    <button class="nav-btn" data-view="search">
+      <span class="nav-icon">⌕</span> Search
+    </button>
+
+    <div class="nav-group-label">Explore</div>
+    <button class="nav-btn" data-view="concepts">
+      <span class="nav-icon">◎</span> Concepts
+    </button>
+    <button class="nav-btn" data-view="feelings">
+      <span class="nav-icon">◉</span> Feelings
+    </button>
+    <button class="nav-btn" data-view="timeline">
+      <span class="nav-icon">⟿</span> Timeline
+    </button>
+
+    <div class="nav-group-label">System</div>
+    <button class="nav-btn" data-view="stats">
+      <span class="nav-icon">▣</span> Stats
+    </button>
+    <button class="nav-btn" data-view="export">
+      <span class="nav-icon">↗</span> Export
+    </button>
+  </nav>
+
+  <div class="sidebar-footer">
+    <div class="stat-pill" id="total-memories">— memories</div>
+    <div class="stat-pill" id="total-concepts">— concepts</div>
+  </div>
+
+</aside>
+
+<!-- ═══════════════ MAIN ═══════════════ -->
+<main id="main">
+
+  <!-- ── NEW MEMORY ── -->
+  <section class="view active" id="view-new-memory">
+    <div class="view-header">
+      <h1>New Memory</h1>
+      <p class="view-desc">Append a new immutable memory to the database.</p>
+    </div>
+
+    <div class="form-card">
+      <div class="form-row">
+        <div class="field">
+          <label>Concept <span class="required">*</span></label>
+          <input type="text" id="new-concept" placeholder="Debt, Family, Work…" autocomplete="off">
+        </div>
+        <div class="field">
+          <label>Feeling <span class="required">*</span></label>
+          <select id="new-feeling">
+            <option value="">— select —</option>
+            <option value="gioia">✨ Joy</option>
+            <option value="tristezza">🌧 Sadness</option>
+            <option value="rabbia">🔥 Anger</option>
+            <option value="paura">🌑 Fear</option>
+            <option value="nostalgia">🍂 Nostalgia</option>
+            <option value="amore">❤ Love</option>
+            <option value="malinconia">🌊 Melancholy</option>
+            <option value="serenità">🌿 Serenity</option>
+            <option value="sorpresa">⚡ Surprise</option>
+            <option value="ansia">🌀 Anxiety</option>
+            <option value="gratitudine">✿ Gratitude</option>
+            <option value="vergogna">◈ Shame</option>
+            <option value="orgoglio">▲ Pride</option>
+            <option value="noia">— Boredom</option>
+            <option value="curiosità">◎ Curiosity</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Content <span class="required">*</span></label>
+        <textarea id="new-content" rows="4" placeholder="Write the memory…"></textarea>
+        <div class="char-count" id="char-count">0 chars</div>
+      </div>
+
+      <div class="form-row">
+        <div class="field">
+          <label>Note <span class="optional">optional</span></label>
+          <input type="text" id="new-note" placeholder="Context, annotations…">
+        </div>
+        <div class="field">
+          <label>Media type</label>
+          <select id="new-mediatype">
+            <option value="text">TEXT</option>
+            <option value="image">IMAGE</option>
+            <option value="video">VIDEO</option>
+            <option value="audio">AUDIO</option>
+            <option value="doc">DOC</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Tags <span class="optional">comma separated</span></label>
+        <input type="text" id="new-tags" placeholder="house, 2024, urgent…">
+        <div class="tag-preview" id="tag-preview"></div>
+      </div>
+
+      <div class="form-actions">
+        <button class="btn-primary" id="btn-remember">
+          <span class="btn-icon">✦</span> Remember
+        </button>
+        <button class="btn-ghost" id="btn-clear">Clear</button>
+      </div>
+    </div>
+
+    <div class="response-area" id="new-memory-response"></div>
+  </section>
+
+  <!-- ── BROWSE ── -->
+  <section class="view" id="view-browse">
+    <div class="view-header">
+      <h1>Browse Memories</h1>
+      <p class="view-desc">Retrieve memories with optional filters.</p>
+    </div>
+
+    <div class="filter-bar">
+      <div class="filter-group">
+        <label>Feeling filter</label>
+        <select id="browse-feeling">
+          <option value="">All feelings</option>
+          <option value="gioia">Joy</option>
+          <option value="tristezza">Sadness</option>
+          <option value="rabbia">Anger</option>
+          <option value="paura">Fear</option>
+          <option value="nostalgia">Nostalgia</option>
+          <option value="amore">Love</option>
+          <option value="malinconia">Melancholy</option>
+          <option value="serenità">Serenity</option>
+          <option value="sorpresa">Surprise</option>
+          <option value="ansia">Anxiety</option>
+          <option value="gratitudine">Gratitude</option>
+          <option value="vergogna">Shame</option>
+          <option value="orgoglio">Pride</option>
+          <option value="noia">Boredom</option>
+          <option value="curiosità">Curiosity</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>Limit</label>
+        <input type="number" id="browse-limit" value="20" min="1" max="500">
+      </div>
+      <div class="filter-group">
+        <label>Order</label>
+        <select id="browse-order">
+          <option value="false">Newest first</option>
+          <option value="true">Oldest first</option>
+        </select>
+      </div>
+      <button class="btn-primary" id="btn-browse">Fetch</button>
+    </div>
+
+    <div class="memories-grid" id="browse-results"></div>
+  </section>
+
+  <!-- ── SEARCH ── -->
+  <section class="view" id="view-search">
+    <div class="view-header">
+      <h1>Search</h1>
+      <p class="view-desc">Full-text search via inverted index — O(k).</p>
+    </div>
+
+    <div class="search-bar">
+      <input type="text" id="search-query" placeholder="Type to search memories…" autocomplete="off">
+      <input type="number" id="search-limit" value="20" min="1" max="200" title="limit">
+      <button class="btn-primary" id="btn-search">Search</button>
+    </div>
+
+    <div class="tag-search-row">
+      <span class="tag-search-label">By tag:</span>
+      <input type="text" id="tag-query" placeholder="casa, lavoro, urgente…">
+      <button class="btn-ghost" id="btn-tag-search">Tag search</button>
+    </div>
+
+    <div class="memories-grid" id="search-results"></div>
+  </section>
+
+  <!-- ── CONCEPTS ── -->
+  <section class="view" id="view-concepts">
+    <div class="view-header">
+      <h1>Concepts</h1>
+      <p class="view-desc">All conceptual keys with emotional distribution.</p>
+    </div>
+
+    <div class="filter-bar">
+      <button class="btn-primary" id="btn-load-concepts">Load concepts</button>
+    </div>
+
+    <div id="concepts-list"></div>
+
+    <!-- Concept detail panel -->
+    <div class="detail-panel" id="concept-detail" style="display:none">
+      <div class="detail-header">
+        <h2 id="detail-concept-name"></h2>
+        <button class="btn-ghost btn-sm" id="btn-close-detail">✕ Close</button>
+      </div>
+      <div class="filter-bar" style="margin-top:0">
+        <div class="filter-group">
+          <label>Filter feeling</label>
+          <select id="detail-feeling">
+            <option value="">All</option>
+            <option value="gioia">Joy</option>
+            <option value="tristezza">Sadness</option>
+            <option value="rabbia">Anger</option>
+            <option value="paura">Fear</option>
+            <option value="nostalgia">Nostalgia</option>
+            <option value="amore">Love</option>
+            <option value="malinconia">Melancholy</option>
+            <option value="serenità">Serenity</option>
+            <option value="sorpresa">Surprise</option>
+            <option value="ansia">Anxiety</option>
+            <option value="gratitudine">Gratitude</option>
+            <option value="vergogna">Shame</option>
+            <option value="orgoglio">Pride</option>
+            <option value="noia">Boredom</option>
+            <option value="curiosità">Curiosity</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Limit</label>
+          <input type="number" id="detail-limit" value="20" min="1">
+        </div>
+        <button class="btn-primary" id="btn-detail-fetch">Fetch memories</button>
+      </div>
+      <div class="memories-grid" id="detail-results"></div>
+    </div>
+  </section>
+
+  <!-- ── FEELINGS ── -->
+  <section class="view" id="view-feelings">
+    <div class="view-header">
+      <h1>Feelings</h1>
+      <p class="view-desc">Emotional distribution across the entire database.</p>
+    </div>
+
+    <div class="filter-bar">
+      <button class="btn-primary" id="btn-load-feelings">Load distribution</button>
+    </div>
+
+    <div id="feelings-chart"></div>
+    <div id="feelings-list"></div>
+  </section>
+
+  <!-- ── TIMELINE ── -->
+  <section class="view" id="view-timeline">
+    <div class="view-header">
+      <h1>Timeline</h1>
+      <p class="view-desc">Emotional arc of a concept over time.</p>
+    </div>
+
+    <div class="filter-bar">
+      <div class="filter-group" style="flex:1">
+        <label>Concept</label>
+        <input type="text" id="timeline-concept" placeholder="Debt, Family, Work…">
+      </div>
+      <button class="btn-primary" id="btn-load-timeline">Load timeline</button>
+    </div>
+
+    <div id="timeline-result"></div>
+  </section>
+
+  <!-- ── STATS ── -->
+  <section class="view" id="view-stats">
+    <div class="view-header">
+      <h1>Stats</h1>
+      <p class="view-desc">General database statistics and storage info.</p>
+    </div>
+
+    <div class="filter-bar">
+      <button class="btn-primary" id="btn-load-stats">Refresh stats</button>
+    </div>
+
+    <div id="stats-grid"></div>
+  </section>
+
+  <!-- ── EXPORT ── -->
+  <section class="view" id="view-export">
+    <div class="view-header">
+      <h1>Export</h1>
+      <p class="view-desc">Export memories as JSON with optional filters.</p>
+    </div>
+
+    <div class="form-card">
+      <div class="form-row">
+        <div class="field">
+          <label>Concept filter</label>
+          <input type="text" id="export-concept" placeholder="All concepts if empty">
+        </div>
+        <div class="field">
+          <label>Feeling filter</label>
+          <select id="export-feeling">
+            <option value="">All feelings</option>
+            <option value="gioia">Joy</option>
+            <option value="tristezza">Sadness</option>
+            <option value="rabbia">Anger</option>
+            <option value="paura">Fear</option>
+            <option value="nostalgia">Nostalgia</option>
+            <option value="amore">Love</option>
+            <option value="malinconia">Melancholy</option>
+            <option value="serenità">Serenity</option>
+            <option value="sorpresa">Surprise</option>
+            <option value="ansia">Anxiety</option>
+            <option value="gratitudine">Gratitude</option>
+            <option value="vergogna">Shame</option>
+            <option value="orgoglio">Pride</option>
+            <option value="noia">Boredom</option>
+            <option value="curiosità">Curiosity</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label class="toggle-label">
+          <input type="checkbox" id="export-content" checked>
+          <span>Include content field</span>
+        </label>
+      </div>
+      <div class="form-actions">
+        <button class="btn-primary" id="btn-export">Export JSON</button>
+        <button class="btn-ghost" id="btn-download">Download file</button>
+      </div>
+    </div>
+
+    <div class="response-area" id="export-result"></div>
+  </section>
+
+</main>
+
+<!-- ═══════════════ REQUEST LOG ═══════════════ -->
+<div id="req-log-panel">
+  <div class="req-log-header">
+    <span>Request log</span>
+    <button id="btn-clear-log">clear</button>
+  </div>
+  <div id="req-log-entries"></div>
+</div>
+
+<!-- Toast notifications -->
+<div id="toast-container"></div>
+
+<script src="api.js"></script>
+</body>
+</html>
