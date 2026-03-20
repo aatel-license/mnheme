@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(bash start.sh 2>&1)",
+      "Bash(PYTHONUTF8=1 python -c \"\nimport sys; sys.path.insert\\(0, '.'\\)\nfrom llm_provider import LLMProvider\nllm = LLMProvider.from_env\\('.env'\\)\nprint\\(f'Provider attivo: {llm.active_profile.name} -> {llm.active_profile.model}'\\)\nprint\\(f'URL: {llm.active_profile.url}'\\)\nprint\\(f'Local: {llm.active_profile.is_local}'\\)\n\")"
+    ]
+  }
+}

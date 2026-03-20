@@ -46,7 +46,6 @@ Strategia di fallback
 from __future__ import annotations
 
 import ctypes
-import fcntl
 import os
 import platform
 import shutil
@@ -482,6 +481,7 @@ class FsProbe:
             dst = src + ".rl"
 
             if os_name == "Linux":
+                import fcntl
                 with open(src, "rb") as s, open(dst, "w+b") as d:
                     fcntl.ioctl(d.fileno(), _LINUX_FICLONE, s.fileno())
                 caps.can_reflink = os.path.exists(dst)

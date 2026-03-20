@@ -466,6 +466,13 @@ class LLMProvider:
 
         use_multi = env.get("USE_MULTI_PROVIDER", "false").lower() == "true"
 
+        # Se non specificato via parametro, leggi ACTIVE_PROVIDER dal .env
+        if active is None:
+            env_active = env.get("ACTIVE_PROVIDER", "").strip()
+            if env_active:
+                # Normalizza: underscore → trattino (come i nomi dei profili)
+                active = env_active.lower().replace("_", "-")
+
         return cls(
             profiles      = profiles,
             active        = active,

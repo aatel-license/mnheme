@@ -18,10 +18,18 @@ NC='\033[0m'
 
 # ── Configurazione ─────────────────────────────────────────────
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Path nativo Windows (per Python che non capisce /c/Users/...)
+if command -v cygpath &>/dev/null; then
+  SCRIPT_DIR_WIN="$(cygpath -w "$SCRIPT_DIR")"
+else
+  SCRIPT_DIR_WIN="$SCRIPT_DIR"
+fi
 VENV_DIR="${SCRIPT_DIR}/.venv"
 ENV_FILE="${SCRIPT_DIR}/.env"
+ENV_FILE_WIN="${SCRIPT_DIR_WIN}\\.env"
 ENV_EXAMPLE="${SCRIPT_DIR}/.env.example"
 DB_DEFAULT="${SCRIPT_DIR}/mente.mnheme"
+DB_DEFAULT_WIN="${SCRIPT_DIR_WIN}\\mente.mnheme"
 LOG_DIR="${SCRIPT_DIR}/logs"
 PID_FILE="${SCRIPT_DIR}/.mnheme_api.pid"
 
@@ -90,9 +98,15 @@ setup_venv() {
     ok "venv creato"
   fi
 
-  # Attiva venv
+  # Attiva venv (bin/ su Linux/macOS, Scripts/ su Windows/MSYS/Git Bash)
   # shellcheck disable=SC1091
-  source "${VENV_DIR}/bin/activate"
+  if [[ -f "${VENV_DIR}/Scripts/activate" ]]; then
+    source "${VENV_DIR}/Scripts/activate"
+  elif [[ -f "${VENV_DIR}/bin/activate" ]]; then
+    source "${VENV_DIR}/bin/activate"
+  else
+    die "Impossibile trovare lo script di attivazione del venv"
+  fi
   ok "venv attivato → $(python --version)"
 }
 
@@ -180,6 +194,7 @@ try:
     m  = db.remember("Test", Feeling.CURIOSITA, "Smoke test OK")
     assert db.count() == 1
     assert m.concept == "Test"
+    db.close()
     tmp.unlink(missing_ok=True)
     files_dir = pathlib.Path(str(tmp).replace('.mnheme', '_files'))
     if files_dir.exists():
@@ -251,8 +266,8 @@ start_service() {
 
       python - <<EOF
 import sys, os
-sys.path.insert(0, '${SCRIPT_DIR}')
-os.chdir('${SCRIPT_DIR}')
+sys.path.insert(0, r'${SCRIPT_DIR_WIN}')
+os.chdir(r'${SCRIPT_DIR_WIN}')
 
 from mnheme import MemoryDB, Feeling, MediaType, Memory
 from llm_provider import LLMProvider
@@ -263,12 +278,12 @@ print("\033[2m  Oggetti disponibili: MemoryDB, Feeling, MediaType, LLMProvider, 
 print()
 
 # Database pronto
-db = MemoryDB('${DB_DEFAULT}')
+db = MemoryDB(r'${DB_DEFAULT_WIN}')
 print(f"\033[0;36m  db = {db}\033[0m")
 
 # Provider (se .env esiste)
 try:
-    llm = LLMProvider.from_env('${ENV_FILE}')
+    llm = LLMProvider.from_env(r'${ENV_FILE_WIN}')
     brain = Brain(db, llm)
     print(f"\033[0;36m  brain = {llm.active_profile.name} → {llm.active_profile.model}\033[0m")
 except Exception as e:
@@ -280,14 +295,14 @@ print()
 EOF
       exec python -i -c "
 import sys, os
-sys.path.insert(0, '${SCRIPT_DIR}')
-os.chdir('${SCRIPT_DIR}')
+sys.path.insert(0, r'${SCRIPT_DIR_WIN}')
+os.chdir(r'${SCRIPT_DIR_WIN}')
 from mnheme import MemoryDB, Feeling, MediaType
 from llm_provider import LLMProvider
 from brain import Brain
-db = MemoryDB('${DB_DEFAULT}')
+db = MemoryDB(r'${DB_DEFAULT_WIN}')
 try:
-    llm   = LLMProvider.from_env('${ENV_FILE}')
+    llm   = LLMProvider.from_env(r'${ENV_FILE_WIN}')
     brain = Brain(db, llm)
 except:
     llm   = None
@@ -314,7 +329,7 @@ except:
       echo ""
 
       # Esporta variabili per il processo API
-      export MNHEME_DB_PATH="${DB_DEFAULT}"
+      export MNHEME_DB_PATH="${DB_DEFAULT_WIN}"
 
       uvicorn mnheme_api:app \
         --host "$host" \
@@ -462,6 +477,8 @@ main() {
   parse_args "$@"
   print_banner
   cd "$SCRIPT_DIR"
+  # Forza UTF-8 in Python su Windows (evita errori cp1252 con caratteri Unicode)
+  export PYTHONUTF8=1
   check_python
   setup_venv
   install_deps "$@"
