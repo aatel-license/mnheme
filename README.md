@@ -1,4 +1,5 @@
 # MNHEME — Human Memory Database
+![Alt text](https://github.com/aatel-license/mnheme/blob/main/imgs/mnheme_dark.png "mnheme")
 # USE IT AT YOU OWN RISK
 > *"La memoria non si sovrascrive. Si stratifica."*
 
