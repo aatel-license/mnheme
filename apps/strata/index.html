@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="civic">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>STRATA — Collective Emotional Archive</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- ══ SIDEBAR ════════════════════════════════════════════ -->
+  <div id="sidebar">
+
+    <div id="sidebar-header">
+      <div id="wordmark">STRATA</div>
+      <div id="tagline">collective emotional archive</div>
+    </div>
+
+    <!-- Community name -->
+    <div id="community-bar">
+      <input id="community-name" type="text" placeholder="Community name"
+        oninput="saveCommunity();renderCommunityBar()">
+      <span id="community-members">0 voices</span>
+    </div>
+
+    <!-- Input form -->
+    <div id="input-section">
+      <div style="font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text-m);margin-bottom:10px" id="input-title">Add a memory</div>
+
+      <!-- Voice row -->
+      <div class="form-row">
+        <label class="form-label" id="lbl-voice">Your name or alias</label>
+        <div id="voice-row">
+          <input id="f-voice" class="finp" type="text" placeholder="Name or alias…">
+          <label class="anon-toggle">
+            <input type="checkbox" id="anon-check"> <span id="lbl-anon">Anonymous</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Event -->
+      <div class="form-row">
+        <label class="form-label" id="lbl-event">Event / topic</label>
+        <input id="f-event" class="finp" type="text" placeholder="e.g. The Closure…">
+      </div>
+
+      <!-- Feeling -->
+      <div class="form-row">
+        <label class="form-label" id="lbl-feel">Feeling</label>
+        <select id="f-feeling" class="finp" style="color:var(--text)">
+          <option value="gioia">Joy</option>
+          <option value="tristezza">Sadness</option>
+          <option value="rabbia">Rage</option>
+          <option value="paura">Fear</option>
+          <option value="nostalgia">Nostalgia</option>
+          <option value="amore">Love</option>
+          <option value="malinconia">Melancholy</option>
+          <option value="serenità">Serenity</option>
+          <option value="sorpresa">Surprise</option>
+          <option value="ansia">Anxiety</option>
+          <option value="gratitudine">Gratitude</option>
+          <option value="vergogna">Shame</option>
+          <option value="orgoglio">Pride</option>
+          <option value="noia">Boredom</option>
+          <option value="curiosità">Curiosity</option>
+        </select>
+      </div>
+
+      <!-- Content -->
+      <div class="form-row">
+        <label class="form-label" id="lbl-content">What you felt</label>
+        <textarea id="f-content" class="finp" rows="3" placeholder="Describe your emotional experience…"></textarea>
+      </div>
+
+      <button id="btn-add" onclick="addEntry()" disabled>Add to the archive</button>
+    </div>
+
+    <!-- Feed -->
+    <div id="feed-header">
+      <span id="feed-title">Archive feed</span>
+      <span id="feed-count"></span>
+    </div>
+    <div id="feed"></div>
+
+    <!-- Footer -->
+    <div id="sidebar-footer">
+
+      <div class="io-row">
+        <button class="io-btn" id="btn-export" onclick="exportArchive()">Export</button>
+        <button class="io-btn" id="btn-import" onclick="importArchive()">Import</button>
+        <button class="io-btn" id="btn-clear"  onclick="clearArchive()" style="color:var(--text-m)">Clear</button>
+      </div>
+
+      <!-- Theme picker -->
+      <div class="picker-wrap" id="theme-wrap">
+        <button class="ctrl-btn" id="btn-theme" onclick="toggleThemePanel()">
+          <span style="display:inline-block;width:11px;height:11px;background:var(--accent);border-radius:3px;flex-shrink:0"></span>Civic
+        </button>
+        <div class="picker-panel" id="theme-panel"></div>
+      </div>
+
+      <!-- Language picker -->
+      <div class="picker-wrap" id="lang-wrap">
+        <button class="ctrl-btn" id="btn-lang" onclick="toggleLangPanel()"
+          style="font-weight:700;color:var(--accent);justify-content:center">EN</button>
+        <div class="picker-panel" id="lang-panel"></div>
+      </div>
+
+    </div>
+  </div><!-- /sidebar -->
+
+  <!-- ══ MAIN ═══════════════════════════════════════════════ -->
+  <div id="main">
+
+    <!-- Mobile bar -->
+    <div id="mobile-bar">
+      <button id="btn-ham" onclick="toggleSidebar()">&#9776;</button>
+      <span style="font-size:14px;font-weight:700;color:var(--accent)">STRATA</span>
+    </div>
+
+    <!-- Stat cards -->
+    <div id="stat-row">
+      <div class="stat-card">
+        <div class="stat-lbl" id="stat-entries-lbl">Total entries</div>
+        <div class="stat-val" id="stat-entries-val">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-lbl" id="stat-events-lbl">Events</div>
+        <div class="stat-val" id="stat-events-val">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-lbl" id="stat-voices-lbl">Voices</div>
+        <div class="stat-val" id="stat-voices-val">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-lbl" id="stat-dominant-lbl">Dominant feeling</div>
+        <div class="stat-val" id="stat-dominant-val" style="font-size:16px">—</div>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div id="tabs">
+      <button class="tab-btn active" data-tab="consensus" id="tab-consensus" onclick="switchTab('consensus')">
+        Consensus <span class="tab-badge" id="tab-events-badge">0</span>
+      </button>
+      <button class="tab-btn" data-tab="voices" id="tab-voices" onclick="switchTab('voices')">
+        Voices <span class="tab-badge" id="tab-voices-badge">0</span>
+      </button>
+      <button class="tab-btn" data-tab="timeline" id="tab-timeline" onclick="switchTab('timeline')">
+        Timeline
+      </button>
+    </div>
+
+    <!-- Consensus pane -->
+    <div class="tab-pane active" id="pane-consensus">
+      <div id="consensus-grid">
+        <div class="dash-card">
+          <div class="card-title" id="card-consensus-title">Consensus map</div>
+          <div id="consensus-map"></div>
+        </div>
+        <div class="dash-card">
+          <div class="card-title" id="card-diverg-title">Emotional divergence</div>
+          <div id="divergence-map"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Voices pane -->
+    <div class="tab-pane" id="pane-voices">
+      <div id="voices-grid"></div>
+    </div>
+
+    <!-- Timeline pane -->
+    <div class="tab-pane" id="pane-timeline">
+      <div class="dash-card">
+        <div class="card-title" id="card-timeline-title">Collective timeline</div>
+        <div id="timeline-list"></div>
+      </div>
+    </div>
+
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<div id="sb-backdrop" onclick="closeSidebar()"></div>
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="noir">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PHANTOM ARCHIVE</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="screen">
+
+<!-- ═══════════ INTRO ═══════════════════════════════════════ -->
+<div id="intro">
+  <div id="intro-emblem">MNHEME INVESTIGATIVE DIVISION · CASE ARCHIVE UNIT</div>
+  <h1>PHANTOM ARCHIVE</h1>
+  <div id="intro-sub">an emotional memory investigation</div>
+  <div id="intro-desc">
+    An unknown subject's emotional memory archive has been recovered.<br>
+    <strong>You have 10 questions.</strong> Interrogate the archive through the Brain.<br>
+    Each answer unlocks a fragment. Then name the phantom.
+  </div>
+
+  <div class="case-cards" id="case-cards"></div>
+
+  <div id="lm-config">
+    <div id="lm-config-title">LM STUDIO CONNECTION</div>
+    <div class="lm-row">
+      <span class="lm-label">URL</span>
+      <input id="lm-url" class="lm-inp" type="text" value="http://localhost:1234/v1/chat/completions">
+    </div>
+    <div class="lm-row">
+      <span class="lm-label">MODEL</span>
+      <input id="lm-model" class="lm-inp" type="text" placeholder="model name (blank = auto)">
+      <button id="btn-lm-save" onclick="saveLm()">SAVE</button>
+      <span id="lm-status">✓</span>
+    </div>
+  </div>
+
+  <!-- Controls bar -->
+  <div id="controls-bar">
+    <!-- Theme picker -->
+    <div id="theme-picker-wrapper">
+      <button id="btn-theme-toggle" onclick="toggleThemePanel()">THEME</button>
+      <div id="theme-panel"></div>
+    </div>
+
+    <!-- Language picker -->
+    <div id="lang-picker-wrapper">
+      <button id="btn-lang-toggle" onclick="toggleLangPanel()">EN</button>
+      <div id="lang-panel"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ GAME ═══════════════════════════════════════ -->
+<div id="game">
+  <div id="topbar">
+    <span id="topbar-logo">PHANTOM ARCHIVE</span>
+    <span id="topbar-case"></span>
+    <span id="questions-left"></span>
+    <button id="btn-conclude-top"    onclick="showVerdict()">CLOSE CASE</button>
+    <button id="btn-back"            onclick="backToIntro()">← BACK</button>
+  </div>
+
+  <div id="game-body">
+    <!-- Left: archive panel -->
+    <div id="archive-panel">
+      <div id="archive-header">
+        <div id="archive-title">EMOTIONAL ARCHIVE — SUBJECT</div>
+        <div id="archive-subject">[IDENTITY WITHHELD]</div>
+        <div id="archive-stats"></div>
+      </div>
+      <div id="archive-list"></div>
+    </div>
+
+    <!-- Right: interrogation -->
+    <div id="interrogation-panel">
+      <div id="chat-area"></div>
+      <div id="input-row">
+        <input id="question-input" type="text" placeholder="Type your question and press Enter…"
+          onkeydown="if(event.key==='Enter')askBrain()">
+        <button id="btn-ask"            onclick="askBrain()"  >ASK</button>
+        <button id="btn-conclude-bottom" onclick="showVerdict()">CONCLUDE</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ VERDICT ════════════════════════════════════ -->
+<div id="verdict">
+  <div id="verdict-header">
+    <div id="verdict-title">FILE YOUR VERDICT</div>
+    <div id="verdict-sub">WHO IS THE PHANTOM?</div>
+  </div>
+  <div id="verdict-form">
+    <label id="verdict-name-label">SUBJECT IDENTITY — name the character</label>
+    <input  id="verdict-name" type="text" placeholder="Your best guess…">
+    <label id="verdict-prof-label">PSYCHOLOGICAL PROFILE — what happened to them?</label>
+    <textarea id="verdict-text" placeholder="Describe the arc you've reconstructed…"></textarea>
+    <button id="btn-submit-verdict" onclick="submitVerdict()">SUBMIT VERDICT</button>
+  </div>
+</div>
+
+<!-- ═══════════ RESULT ═════════════════════════════════════ -->
+<div id="result">
+  <div id="result-dossier" data-label="CASE FILE">
+    <div id="result-stamp">SOLVED</div>
+
+    <div class="result-section">
+      <div class="result-section-label" id="result-identity-label">TRUE IDENTITY</div>
+      <div class="result-section-content result-identity-reveal" id="result-identity"></div>
+    </div>
+
+    <div class="result-section">
+      <div class="result-section-label" id="result-profile-label">OFFICIAL PROFILE</div>
+      <div class="result-section-content" id="result-profile"></div>
+    </div>
+
+    <div class="result-section">
+      <div class="result-section-label" id="result-verdict-label">YOUR VERDICT</div>
+      <div class="result-section-content" id="result-verdict"></div>
+    </div>
+
+    <div class="result-section" id="result-ai-eval-section" style="display:none">
+      <div class="result-section-label" id="result-ai-eval-label">AI EVALUATION</div>
+      <div id="result-ai-eval"></div>
+    </div>
+
+    <div id="score-display"></div>
+    <div id="score-label"></div>
+
+    <div style="text-align:center">
+      <button id="btn-play-again" onclick="backToIntro()">OPEN NEW CASE</button>
+    </div>
+  </div>
+</div>
+
+</div><!-- #screen -->
+<script src="app.js"></script>
+</body>
+</html>

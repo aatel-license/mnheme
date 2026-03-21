@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="parchment">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DRIFT — Emotional Time Capsule</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- ══ SIDEBAR ════════════════════════════════════════════ -->
+  <div id="sidebar">
+
+    <div id="sidebar-header">
+      <div id="wordmark">DRIFT</div>
+      <div id="tagline">seal your feelings · unseal your past</div>
+    </div>
+
+    <!-- Seal form -->
+    <div id="form-section">
+      <div style="font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text-m);margin-bottom:10px" id="form-title">Seal a capsule</div>
+
+      <div class="form-row">
+        <label class="f-label" id="lbl-concept">Concept</label>
+        <input id="f-concept" class="finp" type="text" placeholder="Work, Love, Fear…" autocomplete="off">
+      </div>
+
+      <div class="two-col">
+        <div>
+          <label class="f-label" id="lbl-feeling">Feeling</label>
+          <select id="f-feeling" class="finp" style="color:var(--text)">
+            <option value="gioia">Joy</option>
+            <option value="tristezza">Sadness</option>
+            <option value="ansia" selected>Anxiety</option>
+            <option value="amore">Love</option>
+            <option value="nostalgia">Nostalgia</option>
+            <option value="rabbia">Rage</option>
+            <option value="paura">Fear</option>
+            <option value="malinconia">Melancholy</option>
+            <option value="serenità">Serenity</option>
+            <option value="sorpresa">Surprise</option>
+            <option value="gratitudine">Gratitude</option>
+            <option value="vergogna">Shame</option>
+            <option value="orgoglio">Pride</option>
+            <option value="noia">Boredom</option>
+            <option value="curiosità">Curiosity</option>
+          </select>
+        </div>
+        <div>
+          <label class="f-label" id="lbl-sealdate">Seal until</label>
+          <input id="f-sealdate" class="finp" type="date">
+          <div style="font-size:9px;color:var(--text-m);margin-top:3px" id="seal-date-hint">Opens on this date</div>
+        </div>
+      </div>
+
+      <div class="form-row" style="margin-top:9px">
+        <label class="f-label" id="lbl-content">What you feel now</label>
+        <textarea id="f-content" class="finp" rows="4"
+          placeholder="Write honestly. No one will read this until the date you choose."></textarea>
+      </div>
+
+      <div class="form-row">
+        <label class="f-label" id="lbl-note">Context (optional)</label>
+        <input id="f-note" class="finp" type="text" placeholder="Where, with whom…">
+      </div>
+
+      <button id="btn-seal" onclick="sealCapsule()" disabled>Seal the capsule</button>
+    </div>
+
+    <!-- Capsule list -->
+    <div id="list-header">
+      <span id="list-title">Your capsules</span>
+      <span id="list-counts"></span>
+    </div>
+    <div id="capsule-list"></div>
+
+    <!-- Footer -->
+    <div id="sidebar-footer">
+
+      <div class="lm-row">
+        <span class="lm-lbl">LM</span>
+        <input id="lm-url" class="lm-in" type="text" value="http://localhost:1234/v1/chat/completions" style="width:200px">
+        <input id="lm-model" class="lm-in" type="text" placeholder="model" style="width:80px">
+        <button id="btn-lm-save" onclick="saveLm()">Save</button>
+        <span id="lm-ok" style="font-size:10px;color:var(--accent)">✓</span>
+      </div>
+
+      <div class="picker-wrap" id="theme-wrap">
+        <button class="ctrl-btn" id="btn-theme" onclick="toggleThemePanel()">
+          <span style="display:inline-block;width:11px;height:11px;background:var(--accent);border-radius:3px;flex-shrink:0"></span>
+          Parchment
+        </button>
+        <div class="picker-panel" id="theme-panel"></div>
+      </div>
+
+      <div class="picker-wrap" id="lang-wrap">
+        <button class="ctrl-btn" id="btn-lang" onclick="toggleLangPanel()"
+          style="font-weight:700;color:var(--accent);justify-content:center">EN</button>
+        <div class="picker-panel" id="lang-panel"></div>
+      </div>
+
+    </div>
+  </div><!-- /sidebar -->
+
+  <!-- ══ MAIN ═══════════════════════════════════════════════ -->
+  <div id="main">
+
+    <!-- Mobile topbar -->
+    <div id="mobile-bar">
+      <button id="btn-ham" onclick="toggleSidebar()">&#9776;</button>
+      <span style="font-size:14px;font-weight:700;color:var(--accent)">DRIFT</span>
+    </div>
+
+    <!-- Empty state -->
+    <div id="main-empty">
+      <div id="main-empty-icon">⧗</div>
+      <div id="main-empty-text">
+        Seal a memory today.<br>
+        Come back on the date you choose.<br>
+        See how you have changed.
+      </div>
+    </div>
+
+    <!-- Capsule detail -->
+    <div id="capsule-detail">
+      <div id="sealed-view"></div>
+      <div id="open-view"></div>
+    </div>
+
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<div id="sb-backdrop" onclick="closeSidebar()"></div>
+<script src="app.js"></script>
+</body>
+</html>
