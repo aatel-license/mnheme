@@ -257,14 +257,14 @@ def call_provider(
     max_tokens  : Optional[int]   = None,
 ) -> str:
     """
-    Esegue una singola chiamata HTTP al provider (testo → testo).
+    Esegue una singola chiamata HTTP al provider.
     Gestisce sia il formato Anthropic che OpenAI-compatibile.
 
     Parametri
     ---------
     profile     : configurazione del provider
     system      : prompt di sistema
-    user        : messaggio utente (testo puro)
+    user        : messaggio utente
     temperature : sovrascrive il valore del profilo
     max_tokens  : sovrascrive il valore del profilo
 
@@ -280,68 +280,11 @@ def call_provider(
     else:
         payload, headers = _build_openai(profile, system, user, temp, tokens)
 
-    return _http_call(profile, payload, headers)
-
-
-def call_provider_vision(
-    profile     : ProviderProfile,
-    system      : str,
-    user_text   : str,
-    media_items : list[dict],
-    *,
-    temperature : Optional[float] = None,
-    max_tokens  : Optional[int]   = None,
-) -> str:
-    """
-    Chiamata vision multimodale al provider (testo + immagini/audio/video).
-
-    Il contenuto del messaggio utente viene costruito come lista di content blocks
-    nel formato standard OpenAI vision / Anthropic vision.
-
-    Parametri
-    ---------
-    profile      : configurazione del provider
-    system       : prompt di sistema
-    user_text    : testo del messaggio utente
-    media_items  : lista di dict con chiavi:
-                   - "type"       : "image" | "audio" | "video" | "document"
-                   - "data"       : stringa base64 (senza prefisso data:...)
-                   - "media_type" : MIME type es. "image/jpeg", "audio/mp3"
-                   - "url"        : alternativa a data, URL diretto
-    temperature  : sovrascrive il valore del profilo
-    max_tokens   : sovrascrive il valore del profilo
-
-    Ritorna
-    -------
-    Testo della risposta del modello.
-
-    Note
-    ----
-    Per audio e video la maggior parte dei provider locali (LM Studio, Ollama)
-    supporta solo immagini. Audio/video vengono convertiti in placeholder
-    descrittivi se il provider non li supporta nativamente.
-    """
-    temp   = temperature if temperature is not None else profile.temperature
-    tokens = max_tokens  if max_tokens  is not None else profile.max_tokens
-
-    if profile.is_anthropic:
-        payload, headers = _build_anthropic_vision(
-            profile, system, user_text, media_items, temp, tokens
-        )
-    else:
-        payload, headers = _build_openai_vision(
-            profile, system, user_text, media_items, temp, tokens
-        )
-
-    return _http_call(profile, payload, headers)
-
-
-def _http_call(profile: ProviderProfile, payload: dict, headers: dict) -> str:
-    """Esegue la chiamata HTTP e gestisce gli errori comuni."""
     data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
     req  = urllib.request.Request(
         profile.url, data=data, headers=headers, method="POST"
     )
+
     try:
         with urllib.request.urlopen(req, timeout=profile.timeout) as resp:
             body = json.loads(resp.read().decode("utf-8"))
@@ -398,138 +341,9 @@ def _build_openai(
         "Content-Type": "application/json",
         "User-Agent":   "Mozilla/5.0 (compatible; MNHEME/1.0)",
     }
+    # Bearer token solo se presente (istanze locali non ne hanno bisogno)
     if p.api_key:
         headers["Authorization"] = f"Bearer {p.api_key}"
-    return payload, headers
-
-
-def _build_openai_vision(
-    p           : ProviderProfile,
-    system      : str,
-    user_text   : str,
-    media_items : list[dict],
-    temp        : float,
-    tokens      : int,
-) -> tuple[dict, dict]:
-    """
-    Costruisce il payload OpenAI vision con content blocks misti.
-    Formato: messages[user].content = [{type:text,...}, {type:image_url,...}, ...]
-
-    Solo "image" è universalmente supportato dagli endpoint locali (LM Studio,
-    Ollama, llama.cpp). Audio e video vengono rappresentati come testo descrittivo
-    per non rompere la chiamata su modelli non-multimodali.
-    """
-    content_blocks: list[dict] = []
-
-    for item in media_items:
-        mt = item.get("type", "image")
-        mime = item.get("media_type", "image/jpeg")
-
-        if mt == "image":
-            if item.get("url"):
-                url_val = item["url"]
-            else:
-                b64 = item.get("data", "")
-                url_val = f"data:{mime};base64,{b64}"
-            content_blocks.append({
-                "type":      "image_url",
-                "image_url": {"url": url_val},
-            })
-        else:
-            # Audio / video / doc: placeholder testuale
-            # I modelli locali tipicamente non supportano questi formati
-            label = mt.upper()
-            size  = item.get("size_kb", "?")
-            content_blocks.append({
-                "type": "text",
-                "text": f"[{label} allegato — tipo: {mime}, dimensione: ~{size}KB]",
-            })
-
-    # Il testo utente va in coda ai media (o prima, per alcuni modelli)
-    if user_text:
-        content_blocks.append({"type": "text", "text": user_text})
-
-    payload = {
-        "model":       p.model,
-        "max_tokens":  tokens,
-        "temperature": temp,
-        "messages": [
-            {"role": "system", "content": system},
-            {"role": "user",   "content": content_blocks},
-        ],
-    }
-    headers = {
-        "Content-Type": "application/json",
-        "User-Agent":   "Mozilla/5.0 (compatible; MNHEME/1.0)",
-    }
-    if p.api_key:
-        headers["Authorization"] = f"Bearer {p.api_key}"
-    return payload, headers
-
-
-def _build_anthropic_vision(
-    p           : ProviderProfile,
-    system      : str,
-    user_text   : str,
-    media_items : list[dict],
-    temp        : float,
-    tokens      : int,
-) -> tuple[dict, dict]:
-    """
-    Costruisce il payload Anthropic vision con content blocks.
-    Formato nativo Anthropic: messages[user].content = [{type:image,...}, {type:text,...}]
-    Supporta: image (jpeg/png/gif/webp), documents (pdf).
-    """
-    content_blocks: list[dict] = []
-
-    for item in media_items:
-        mt   = item.get("type", "image")
-        mime = item.get("media_type", "image/jpeg")
-
-        if mt == "image":
-            b64 = item.get("data", "")
-            content_blocks.append({
-                "type": "image",
-                "source": {
-                    "type":       "base64",
-                    "media_type": mime,
-                    "data":       b64,
-                },
-            })
-        elif mt == "document" and "pdf" in mime:
-            b64 = item.get("data", "")
-            content_blocks.append({
-                "type": "document",
-                "source": {
-                    "type":       "base64",
-                    "media_type": "application/pdf",
-                    "data":       b64,
-                },
-            })
-        else:
-            label = mt.upper()
-            size  = item.get("size_kb", "?")
-            content_blocks.append({
-                "type": "text",
-                "text": f"[{label} allegato — tipo: {mime}, dimensione: ~{size}KB]",
-            })
-
-    if user_text:
-        content_blocks.append({"type": "text", "text": user_text})
-
-    payload = {
-        "model":       p.model,
-        "max_tokens":  tokens,
-        "temperature": temp,
-        "system":      system,
-        "messages":    [{"role": "user", "content": content_blocks}],
-    }
-    headers = {
-        "Content-Type":      "application/json",
-        "User-Agent":        "Mozilla/5.0 (compatible; MNHEME/1.0)",
-        "x-api-key":         p.api_key,
-        "anthropic-version": "2023-06-01",
-    }
     return payload, headers
 
 
@@ -654,9 +468,12 @@ class LLMProvider:
 
         use_multi = env.get("USE_MULTI_PROVIDER", "false").lower() == "true"
 
+        # Legge ACTIVE_PROVIDER dal .env se non passato esplicitamente come parametro
+        resolved_active = active or env.get("ACTIVE_PROVIDER") or None
+
         return cls(
             profiles      = profiles,
-            active        = active,
+            active        = resolved_active,
             use_multi     = use_multi,
             priority      = priority,
             retry_count   = retry_count,
@@ -679,8 +496,23 @@ class LLMProvider:
         max_tokens  : Optional[int]   = None,
     ) -> str:
         """
-        Invia una richiesta testo→testo al provider attivo.
+        Invia una richiesta al provider attivo.
         In modalità multi-provider, prova in cascata fino al primo successo.
+
+        Parametri
+        ---------
+        system      : prompt di sistema
+        user        : messaggio utente
+        temperature : sovrascrive il valore del profilo
+        max_tokens  : sovrascrive il valore del profilo
+
+        Ritorna
+        -------
+        Testo della risposta del modello.
+
+        Esempio
+        -------
+        >>> resp = provider.complete("Sei un assistente.", "Come stai?")
         """
         if self._use_multi:
             return self._complete_multi(system, user, temperature, max_tokens)
@@ -688,102 +520,6 @@ class LLMProvider:
             return self._complete_single(
                 self._active, system, user, temperature, max_tokens
             )
-
-    def complete_vision(
-        self,
-        system      : str,
-        user_text   : str,
-        media_items : list[dict],
-        *,
-        temperature : Optional[float] = None,
-        max_tokens  : Optional[int]   = None,
-    ) -> str:
-        """
-        Invia una richiesta vision (testo + media) al provider attivo.
-        Usa call_provider_vision() internamente.
-
-        Parametri
-        ---------
-        system      : prompt di sistema
-        user_text   : parte testuale del messaggio utente
-        media_items : lista di dict con chiavi type, data/url, media_type, size_kb
-                      Vedi call_provider_vision() per il formato completo.
-        temperature : sovrascrive il valore del profilo
-        max_tokens  : sovrascrive il valore del profilo
-
-        Esempio
-        -------
-        >>> resp = provider.complete_vision(
-        ...     system    = "Analizza l'immagine.",
-        ...     user_text = "Cosa vedi in questa foto?",
-        ...     media_items = [{
-        ...         "type":       "image",
-        ...         "data":       "<base64>",
-        ...         "media_type": "image/jpeg",
-        ...     }],
-        ... )
-        """
-        if self._use_multi:
-            return self._complete_vision_multi(
-                system, user_text, media_items, temperature, max_tokens
-            )
-        return self._complete_vision_single(
-            self._active, system, user_text, media_items, temperature, max_tokens
-        )
-
-    def _complete_vision_single(
-        self,
-        name        : str,
-        system      : str,
-        user_text   : str,
-        media_items : list[dict],
-        temperature : Optional[float],
-        max_tokens  : Optional[int],
-    ) -> str:
-        profile = self._profiles[name]
-        limiter = self._rate_limiters[name]
-        last_error: Optional[LLMError] = None
-
-        for attempt in range(self._retry_count + 1):
-            limiter.wait()
-            try:
-                return call_provider_vision(
-                    profile, system, user_text, media_items,
-                    temperature=temperature,
-                    max_tokens=max_tokens,
-                )
-            except LLMError as e:
-                last_error = e
-                if e.status_code in (429, 500, 502, 503, 504) and attempt < self._retry_count:
-                    time.sleep(self._retry_backoff * (2 ** attempt))
-                    continue
-                raise
-
-        raise last_error  # type: ignore
-
-    def _complete_vision_multi(
-        self,
-        system      : str,
-        user_text   : str,
-        media_items : list[dict],
-        temperature : Optional[float],
-        max_tokens  : Optional[int],
-    ) -> str:
-        errors: list[str] = []
-        order = [self._active] + [
-            n for n in self._priority if n != self._active and n in self._profiles
-        ]
-        for name in order:
-            try:
-                return self._complete_vision_single(
-                    name, system, user_text, media_items, temperature, max_tokens
-                )
-            except LLMError as e:
-                errors.append(f"{name}: {e}")
-        raise LLMError(
-            "Tutti i provider hanno fallito (vision):\n" +
-            "\n".join(f"  - {e}" for e in errors)
-        )
 
     def _complete_single(
         self,

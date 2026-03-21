@@ -318,44 +318,65 @@ function feelingHtml(feeling) {
   return `<span class="memory-feeling feeling-${CSS.escape(feeling)}" data-feeling="${esc(feeling)}">${label}</span>`;
 }
 
+function _isBinaryContent(content, mt) {
+  if (!content) return false;
+  if (content.startsWith('data:')) return true;
+  // base64 puro: niente spazi, solo caratteri b64, lunghezza significativa
+  if (mt !== 'text' && content.length > 80) {
+    const sample = content.slice(0, 80);
+    if (/^[A-Za-z0-9+/=]+$/.test(sample)) return true;
+  }
+  return false;
+}
+
+function _buildSrc(content, mt) {
+  if (!content) return '';
+  if (content.startsWith('data:')) return content;
+  const mimeMap = {
+    image: 'image/jpeg', video: 'video/mp4',
+    audio: 'audio/mpeg', doc: 'application/pdf',
+  };
+  const mime = mimeMap[mt] || 'application/octet-stream';
+  return `data:${mime};base64,${content}`;
+}
+
+function _safeContentPreview(content, mt) {
+  // Per media non-text, non stampare mai il base64 — mostra solo un placeholder
+  if (mt !== 'text' && _isBinaryContent(content, mt)) {
+    const kb = Math.round((content.length * 0.75) / 1024);
+    return `<span class="memory-content-placeholder">[${mt.toUpperCase()} · ~${kb} KB]</span>`;
+  }
+  return esc(content);
+}
+
 function memoryContentHtml(m) {
   const mt      = (m.media_type || 'text').toLowerCase();
   const content = m.content || '';
 
-  // Rileva se il content è un data URL o base64 puro
-  const isDataUrl = content.startsWith('data:');
-  const isB64     = !isDataUrl && mt !== 'text' && content.length > 100 && !/\s/.test(content.slice(0, 60));
-
-  // Ricostruisci il src URL
-  let src = '';
-  if (isDataUrl) {
-    src = content;
-  } else if (isB64) {
-    const mimeMap = { image: 'image/jpeg', video: 'video/mp4', audio: 'audio/mpeg', doc: 'application/octet-stream' };
-    src = `data:${mimeMap[mt] || 'application/octet-stream'};base64,${content}`;
+  if (!_isBinaryContent(content, mt)) {
+    // Testo puro
+    return `<div class="memory-content">${esc(content)}</div>`;
   }
 
-  if (mt === 'image' && src) {
+  const src = _buildSrc(content, mt);
+
+  if (mt === 'image') {
     return `<div class="memory-media-wrap">
       <img class="memory-img" src="${src}" alt="memory image" loading="lazy"
            onclick="this.classList.toggle('memory-img-full')">
     </div>`;
   }
-
-  if (mt === 'video' && src) {
+  if (mt === 'video') {
     return `<div class="memory-media-wrap">
       <video class="memory-video" controls preload="metadata" src="${src}"></video>
     </div>`;
   }
-
-  if (mt === 'audio' && src) {
+  if (mt === 'audio') {
     return `<div class="memory-media-wrap">
       <audio class="memory-audio" controls preload="metadata" src="${src}"></audio>
     </div>`;
   }
-
-  if (mt === 'doc' && src) {
-    // Dimensione stimata dal b64
+  if (mt === 'doc') {
     const kb = Math.round(content.length * 0.75 / 1024);
     return `<div class="memory-doc-block">
       <span class="memory-doc-icon">📄</span>
@@ -364,8 +385,13 @@ function memoryContentHtml(m) {
     </div>`;
   }
 
-  // Testo puro (o fallback)
-  return `<div class="memory-content">${esc(content)}</div>`;
+  // Fallback per media type sconosciuto con contenuto binario — non stampare base64
+  const kb = Math.round(content.length * 0.75 / 1024);
+  return `<div class="memory-doc-block">
+    <span class="memory-doc-icon">📎</span>
+    <span class="memory-doc-label">${mt.toUpperCase()} · ~${kb} KB</span>
+    <a class="memory-doc-dl" href="${src}" download="file">↓ Download</a>
+  </div>`;
 }
 
 function memoryCardHtml(m, i) {
@@ -678,7 +704,12 @@ document.getElementById('btn-remember').addEventListener('click', async () => {
 
   try {
     const mem = await POST('/memories', { concept, feeling, content, note, media_type: mediaType, tags });
-    ra.innerHTML = `<div class="response-label">✦ Memory created</div>${JSON.stringify(mem, null, 2)}`;
+    const displayMem = Object.assign({}, mem);
+    if (displayMem.content && _isBinaryContent(displayMem.content, (displayMem.media_type||'text').toLowerCase())) {
+      const kb = Math.round(displayMem.content.length * 0.75 / 1024);
+      displayMem.content = `[${(displayMem.media_type||'file').toUpperCase()} · ~${kb} KB — base64 omesso]`;
+    }
+    ra.innerHTML = `<div class="response-label">✦ Memory created</div>${JSON.stringify(displayMem, null, 2)}`;
     toast(`Memory saved: ${concept} / ${feeling}`, 'success');
     checkConnection();
   } catch (e) {
@@ -1309,7 +1340,7 @@ function showGraphDetail(d, memories) {
     const isMedia = mt !== 'text';
     const contentHtml = isMedia
       ? memoryContentHtml(m)
-      : `<div class="graph-detail-content">${esc(m.content)}</div>`;
+      : `<div class="graph-detail-content">${_safeContentPreview(m.content, (m.media_type||'text').toLowerCase())}</div>`;
 
     body.innerHTML = `
       <div class="graph-detail-chips">
@@ -1552,9 +1583,20 @@ document.getElementById('btn-export').addEventListener('click', async () => {
 
   try {
     const data  = await GET(path);
-    _exportData = data;
-    const count = (data.memories || []).length;
-    ra.innerHTML = `<div class="response-label">✓ ${count} memories exported</div>${JSON.stringify(data, null, 2)}`;
+    _exportData = data;  // mantiene base64 completo per il download
+    const count = (data.memories || data || []).length;
+    // Per la visualizzazione, sostituisce i content binari con placeholder
+    const displayData = JSON.parse(JSON.stringify(data));
+    const mems = displayData.memories || displayData;
+    if (Array.isArray(mems)) {
+      mems.forEach(m => {
+        if (m.content && _isBinaryContent(m.content, (m.media_type||'text').toLowerCase())) {
+          const kb = Math.round(m.content.length * 0.75 / 1024);
+          m.content = `[${(m.media_type||'file').toUpperCase()} · ~${kb} KB]`;
+        }
+      });
+    }
+    ra.innerHTML = `<div class="response-label">✓ ${count} memories exported</div>${JSON.stringify(displayData, null, 2)}`;
     toast(`Exported ${count} memories`, 'success');
   } catch (e) {
     ra.classList.add('error');
