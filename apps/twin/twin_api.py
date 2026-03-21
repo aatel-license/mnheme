@@ -1,3 +1,4 @@
+
 """
 twin_api.py — Digital Twin REST API
 =====================================
@@ -142,9 +143,11 @@ app = FastAPI(
 )
 app.add_middleware(
     CORSMiddleware,
-    allow_origins  = ["*"],
-    allow_methods  = ["GET", "POST"],
-    allow_headers  = ["*"],
+    allow_origins     = ["*"],
+    allow_credentials = False,
+    allow_methods     = ["*"],
+    allow_headers     = ["*"],
+    expose_headers    = ["*"],
 )
 
 # Tenta di caricare il twin all'avvio
