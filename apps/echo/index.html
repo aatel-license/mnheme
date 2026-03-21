@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="ivory">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ECHO — Narrative Generator</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- ══ LEFT PANEL — Archive input ══════════════════════════ -->
+  <div id="left-panel">
+
+    <div id="left-header">
+      <div id="wordmark">ECHO</div>
+      <div id="tagline">emotional narrative generator</div>
+    </div>
+
+    <div id="archive-section">
+
+      <!-- Archive title + cards -->
+      <div>
+        <div class="section-label" id="archive-title">Emotional archive</div>
+        <div id="cards-container"></div>
+        <button id="btn-add-card" onclick="addCard()">+ Add memory</button>
+      </div>
+
+      <!-- Presets -->
+      <div>
+        <div class="section-label" id="presets-label">Sample archives</div>
+        <div id="preset-row"></div>
+      </div>
+
+    </div><!-- /archive-section -->
+
+    <!-- Footer: theme + lang + LM -->
+    <div id="left-footer">
+
+      <!-- LM Studio -->
+      <div id="lm-row">
+        <span class="lm-lbl">LM</span>
+        <input id="lm-url"   class="lm-in lm-url-in" type="text" value="http://localhost:1234/v1/chat/completions">
+        <input id="lm-model" class="lm-in" type="text" placeholder="model" style="width:90px">
+        <button id="btn-lm-save" onclick="saveLm()">Save</button>
+        <span id="lm-ok" style="font-size:10px;color:var(--accent)">✓</span>
+      </div>
+
+      <!-- Theme picker -->
+      <div class="picker-wrap" id="theme-wrap">
+        <button class="ctrl-btn" id="btn-theme" onclick="toggleThemePanel()">
+          <span style="display:inline-block;width:11px;height:11px;background:var(--accent);border-radius:3px"></span>
+          Ivory
+        </button>
+        <div class="picker-panel" id="theme-panel"></div>
+      </div>
+
+      <!-- Language picker -->
+      <div class="picker-wrap" id="lang-wrap">
+        <button class="ctrl-btn" id="btn-lang" onclick="toggleLangPanel()"
+          style="font-weight:700;color:var(--accent);justify-content:center">EN</button>
+        <div class="picker-panel" id="lang-panel"></div>
+      </div>
+
+    </div><!-- /left-footer -->
+  </div><!-- /left-panel -->
+
+  <!-- ══ RIGHT PANEL — Controls + Output ═════════════════════ -->
+  <div id="right-panel">
+
+    <!-- Mobile topbar -->
+    <div id="mobile-bar">
+      <button id="btn-ham" onclick="toggleSidebar()">&#9776;</button>
+      <span style="font-size:14px;font-weight:700;color:var(--accent)">ECHO</span>
+    </div>
+
+    <!-- Controls bar -->
+    <div id="controls-bar">
+
+      <!-- Format -->
+      <div class="ctrl-group">
+        <div class="ctrl-group-label" id="fmt-label">Format</div>
+        <div class="ctrl-row" id="fmt-chips">
+          <!-- filled by JS -->
+        </div>
+      </div>
+
+      <!-- Tone -->
+      <div class="ctrl-group">
+        <div class="ctrl-group-label" id="tone-label">Tone</div>
+        <div class="ctrl-row" id="tone-chips">
+          <!-- filled by JS -->
+        </div>
+      </div>
+
+      <!-- Length -->
+      <div id="length-row">
+        <span id="length-label" class="ctrl-group-label" style="margin-bottom:0">Length</span>
+        <span id="len-short-lbl" style="font-size:10px;color:var(--text-m)">Short</span>
+        <input id="length-slider" type="range" min="0" max="100" value="50" oninput="updateLength()">
+        <span id="len-long-lbl" style="font-size:10px;color:var(--text-m)">Long</span>
+        <span id="length-display" style="font-size:10px;color:var(--text-s);min-width:36px"></span>
+      </div>
+
+      <!-- Generate -->
+      <button id="btn-generate" onclick="generate()">Generate</button>
+
+    </div><!-- /controls-bar -->
+
+    <!-- Output area -->
+    <div id="output-area">
+
+      <!-- Placeholder -->
+      <div id="output-placeholder">
+        <div id="output-placeholder-icon">◈</div>
+        <div id="output-placeholder-text">
+          Add emotional memories to the archive,<br>
+          choose a format and tone,<br>
+          then hit Generate.
+        </div>
+      </div>
+
+      <!-- Output document -->
+      <div id="output-doc">
+        <div id="output-header">
+          <span id="output-format-badge">Letter</span>
+          <span id="output-meta"></span>
+          <div class="output-actions">
+            <button id="btn-copy"  onclick="copyOutput()">Copy</button>
+            <button id="btn-regen" onclick="generate()">Regenerate</button>
+          </div>
+        </div>
+        <div id="output-text"></div>
+      </div>
+
+    </div><!-- /output-area -->
+
+  </div><!-- /right-panel -->
+</div><!-- /app -->
+
+<!-- Generating overlay -->
+<div id="gen-overlay" class="generating-overlay" id="generating-overlay">
+  <div id="generating-card">
+    <div id="gen-spinner"></div>
+    <div id="gen-label">Writing from the archive…</div>
+  </div>
+</div>
+
+<!-- Mobile backdrop -->
+<div id="left-backdrop" onclick="closeSidebar()"></div>
+
+<script src="app.js"></script>
+<script>
+  // init length display
+  updateLength();
+</script>
+</body>
+</html>

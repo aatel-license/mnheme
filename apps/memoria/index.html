@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="pearl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MEMORIA</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ══ SIDEBAR ════════════════════════════════════════════ -->
+  <div id="sidebar">
+
+    <div id="sidebar-header">
+      <div id="sidebar-wordmark">MEMORIA</div>
+      <div id="sidebar-tagline">personal emotional archive</div>
+    </div>
+
+    <!-- Entry form -->
+    <div id="entry-form">
+      <div style="font-size:11px;font-weight:600;color:var(--text-m);letter-spacing:.04em;text-transform:uppercase;margin-bottom:10px" id="form-title">Record a memory</div>
+
+      <div class="form-row">
+        <label class="form-label" id="label-concept">Concept</label>
+        <input id="f-concept" class="finp" type="text" placeholder="Work, Family…" autocomplete="off">
+      </div>
+      <div class="form-row">
+        <label class="form-label" id="label-feeling">Feeling</label>
+        <select id="f-feeling" class="finp">
+          <option value="gioia">Joy</option>
+          <option value="tristezza">Sadness</option>
+          <option value="rabbia">Rage</option>
+          <option value="paura">Fear</option>
+          <option value="nostalgia">Nostalgia</option>
+          <option value="amore">Love</option>
+          <option value="malinconia">Melancholy</option>
+          <option value="serenità">Serenity</option>
+          <option value="sorpresa">Surprise</option>
+          <option value="ansia">Anxiety</option>
+          <option value="gratitudine">Gratitude</option>
+          <option value="vergogna">Shame</option>
+          <option value="orgoglio">Pride</option>
+          <option value="noia">Boredom</option>
+          <option value="curiosità">Curiosity</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label class="form-label" id="label-content">Content</label>
+        <textarea id="f-content" class="finp" rows="3" placeholder="What happened…"></textarea>
+      </div>
+      <div class="form-row">
+        <label class="form-label" id="label-note">Note (optional)</label>
+        <input id="f-note" class="finp" type="text" placeholder="Context, place…">
+      </div>
+      <button id="btn-add" onclick="addMemory()" disabled>Add to archive</button>
+    </div>
+
+    <!-- Recent list -->
+    <div id="recent-header">
+      <span id="recent-title" style="font-size:10px;font-weight:600;letter-spacing:.06em;color:var(--text-m);text-transform:uppercase">Recent</span>
+      <span id="recent-count" style="font-size:10px;color:var(--text-m)"></span>
+    </div>
+    <div id="recent-list"></div>
+
+    <!-- Footer controls -->
+    <div id="sidebar-footer">
+
+      <!-- Theme picker -->
+      <div class="picker-wrapper" id="theme-picker-wrapper">
+        <button id="btn-theme-toggle" onclick="toggleThemePanel()">
+          <span style="display:inline-block;width:11px;height:11px;background:var(--accent);border-radius:3px;flex-shrink:0"></span>
+          Theme
+        </button>
+        <div class="picker-panel" id="theme-panel"></div>
+      </div>
+
+      <!-- Language picker -->
+      <div class="picker-wrapper" id="lang-picker-wrapper">
+        <button id="btn-lang-toggle" onclick="toggleLangPanel()" style="font-weight:700;color:var(--accent)">EN</button>
+        <div class="picker-panel" id="lang-panel"></div>
+      </div>
+
+    </div>
+  </div><!-- /sidebar -->
+
+  <!-- ══ MAIN ═══════════════════════════════════════════════ -->
+  <div id="main">
+
+    <!-- Mobile topbar -->
+    <div id="mobile-topbar">
+      <button id="btn-hamburger" onclick="toggleSidebar()">&#9776;</button>
+      <span style="font-size:14px;font-weight:700;color:var(--accent)">MEMORIA</span>
+    </div>
+
+    <!-- Topbar with title + LM config -->
+    <div id="dash-topbar">
+      <span id="dash-title">Emotional Dashboard</span>
+      <div class="lm-config-inline">
+        <span class="lm-label-sm">LM STUDIO</span>
+        <input id="lm-url"   class="lm-inp-sm" type="text" value="http://localhost:1234/v1/chat/completions">
+        <input id="lm-model" class="lm-inp-sm" type="text" placeholder="model">
+        <button id="btn-lm-save" onclick="saveLm()">Save</button>
+        <span id="lm-saved" style="font-size:10px;color:var(--accent);display:none">&#10003; saved</span>
+      </div>
+    </div>
+
+    <!-- Stat cards -->
+    <div id="stat-row">
+      <div class="stat-card">
+        <div class="stat-label" id="stat-total-label">Total entries</div>
+        <div class="stat-value" id="stat-total-val">0</div>
+        <div class="stat-sub" id="stat-total-sub"></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label" id="stat-concepts-label">Concepts</div>
+        <div class="stat-value" id="stat-concepts-val">0</div>
+        <div class="stat-sub" id="stat-concepts-sub"></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label" id="stat-streak-label">Day streak</div>
+        <div class="stat-value" id="stat-streak-val">0</div>
+        <div class="stat-sub" id="stat-streak-sub"></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label" id="stat-feeling-label">This week</div>
+        <div class="stat-value" id="stat-feeling-val" style="font-size:16px">—</div>
+        <div class="stat-sub" id="stat-feeling-sub"></div>
+      </div>
+    </div>
+
+    <!-- Calendar heatmap -->
+    <div id="calendar-card">
+      <div class="section-title" id="cal-section-title">Emotional calendar</div>
+      <div id="calendar-svg-wrap"></div>
+    </div>
+
+    <!-- Concept cloud + Feeling bars -->
+    <div id="analytics-row">
+      <div class="a-card">
+        <div class="section-title" id="concept-section-title">Concept cloud</div>
+        <div id="concept-grid"></div>
+      </div>
+      <div class="a-card">
+        <div class="section-title" id="feel-section-title">Feeling distribution</div>
+        <div id="feel-bars"></div>
+      </div>
+    </div>
+
+    <!-- Emotional arc -->
+    <div id="arc-card">
+      <div id="arc-controls">
+        <div class="section-title" id="arc-section-title" style="margin-bottom:0">Emotional arc</div>
+        <select id="arc-concept-sel" onchange="selectArcConcept(this.value)">
+          <option value="">Select concept…</option>
+        </select>
+      </div>
+      <div id="arc-empty" style="font-size:12px;color:var(--text-m);font-style:italic;padding:16px 0">
+        Select a concept to see its emotional arc over time.
+      </div>
+      <div id="arc-timeline" style="display:none;overflow-x:auto"></div>
+    </div>
+
+    <!-- Brain -->
+    <div id="brain-card">
+      <div id="brain-header">
+        <div class="section-title" id="brain-title" style="margin-bottom:0">Brain</div>
+        <button id="btn-brain-clear" onclick="clearBrain()" style="display:none">clear</button>
+      </div>
+      <div id="brain-msgs" style="min-height:40px">
+        <div id="brain-empty" style="font-size:12px;color:var(--text-m);font-style:italic;padding:6px 0">
+          Ask about your emotional patterns, a concept, or your recent arc.
+        </div>
+      </div>
+      <div id="brain-input-row">
+        <input id="brain-input" type="text" placeholder="Ask the Brain…"
+          onkeydown="if(event.key===\'Enter\'&&!event.shiftKey)askBrain()">
+        <button id="btn-brain-ask" onclick="askBrain()">Ask</button>
+      </div>
+    </div>
+
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<!-- Mobile sidebar backdrop -->
+<div id="sidebar-backdrop" onclick="closeSidebar()"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
