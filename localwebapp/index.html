@@ -331,29 +331,29 @@
   <!-- ── GRAPH ── -->
   <section class="view" id="view-graph">
     <div class="view-header">
-      <h1 data-i18n="navGraph">Graph</h1>
-      <p class="view-desc">Node graph of memories — zoom, drag, filter by relation type.</p>
+      <h1 data-i18n="titleGraph">Memory Graph</h1>
+      <p class="view-desc" data-i18n="descGraph">Node graph of memories — zoom, drag, filter by relation type.</p>
     </div>
 
     <!-- Controls bar -->
     <div class="graph-controls">
       <div class="graph-filter-group">
-        <span class="graph-filter-label">Link by</span>
-        <button class="graph-mode-btn active" data-mode="concept">Concept</button>
-        <button class="graph-mode-btn" data-mode="feeling">Feeling</button>
-        <button class="graph-mode-btn" data-mode="tag">Tag</button>
-        <button class="graph-mode-btn" data-mode="all">All</button>
+        <span class="graph-filter-label" data-i18n="labelLinkBy">Link by</span>
+        <button class="graph-mode-btn active" data-mode="concept" data-i18n="graphModeConc">Concept</button>
+        <button class="graph-mode-btn" data-mode="feeling" data-i18n="graphModeFeel">Feeling</button>
+        <button class="graph-mode-btn" data-mode="tag" data-i18n="graphModeTag">Tag</button>
+        <button class="graph-mode-btn" data-mode="all" data-i18n="graphModeAll">All</button>
       </div>
       <div class="graph-filter-group">
-        <span class="graph-filter-label">Filter feeling</span>
+        <span class="graph-filter-label" data-i18n="labelFilterFeeling2">Filter feeling</span>
         <select id="graph-feeling-filter" class="feeling-select graph-select" data-mode="all"></select>
       </div>
       <div class="graph-filter-group">
-        <span class="graph-filter-label">Filter concept</span>
-        <input type="text" id="graph-concept-filter" class="graph-input" placeholder="all concepts">
+        <span class="graph-filter-label" data-i18n="labelFilterConcept">Filter concept</span>
+        <input type="text" id="graph-concept-filter" class="graph-input" placeholder="all concepts" data-i18n-ph="phAllConcepts">
       </div>
       <div class="graph-filter-group">
-        <span class="graph-filter-label">Max nodes</span>
+        <span class="graph-filter-label" data-i18n="labelMaxNodes">Max nodes</span>
         <select id="graph-limit" class="graph-select">
           <option value="30">30</option>
           <option value="60" selected>60</option>
@@ -362,7 +362,7 @@
         </select>
       </div>
       <button class="btn-primary graph-btn-load" id="btn-graph-load">
-        <span class="btn-icon">⬡</span> Load graph
+        <span class="btn-icon">⬡</span> <span data-i18n="graphBtnLoad">Load graph</span>
       </button>
     </div>
 
@@ -373,7 +373,7 @@
     <div class="graph-wrap" id="graph-wrap">
       <div class="graph-empty" id="graph-empty">
         <span class="graph-empty-icon">⬡</span>
-        <span>Click "Load graph" to render the memory network</span>
+        <span data-i18n="graphEmpty">Click "Load graph" to render the memory network</span>
       </div>
       <svg id="graph-svg"></svg>
     </div>
