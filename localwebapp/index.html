@@ -376,18 +376,18 @@
         <span data-i18n="graphEmpty">Click "Load graph" to render the memory network</span>
       </div>
       <svg id="graph-svg"></svg>
-    </div>
 
-    <!-- Tooltip -->
-    <div class="graph-tooltip" id="graph-tooltip" style="display:none"></div>
+      <!-- Tooltip — inside wrap so position:absolute works correctly -->
+      <div class="graph-tooltip" id="graph-tooltip" style="display:none"></div>
 
-    <!-- Detail panel -->
-    <div class="graph-detail" id="graph-detail" style="display:none">
-      <div class="graph-detail-header">
-        <span id="graph-detail-title"></span>
-        <button class="graph-detail-close" id="graph-detail-close">✕</button>
+      <!-- Detail panel — inside wrap, overlays the canvas -->
+      <div class="graph-detail" id="graph-detail" style="display:none">
+        <div class="graph-detail-header">
+          <span id="graph-detail-title"></span>
+          <button class="graph-detail-close" id="graph-detail-close">✕</button>
+        </div>
+        <div class="graph-detail-body" id="graph-detail-body"></div>
       </div>
-      <div class="graph-detail-body" id="graph-detail-body"></div>
     </div>
   </section>
 
