@@ -1350,8 +1350,8 @@ async function loadGraph() {
   const limit   = parseInt(document.getElementById('graph-limit').value) || 60;
 
   btn.disabled = true;
-  btn.innerHTML = '<span class="loading"></span> Loading…';
-  empty.innerHTML = '<span class="graph-empty-icon">⬡</span><span>Loading memories…</span>';
+  btn.innerHTML = `<span class="loading"></span> ${ui('graphLoading') || 'Loading…'}`;
+  empty.innerHTML = `<span class="graph-empty-icon">⬡</span><span>${ui('graphLoading') || 'Loading…'}</span>`;
   empty.style.display = '';
   document.getElementById('graph-svg').style.display = 'none';
 
@@ -1369,22 +1369,21 @@ async function loadGraph() {
     _graphMemories = memories;
 
     if (!memories.length) {
-      empty.innerHTML = '<span class="graph-empty-icon">◎</span><span>No memories match the current filters.</span>';
+      empty.innerHTML = `<span class="graph-empty-icon">◎</span><span>${ui('graphNoMemories') || 'No memories match the current filters.'}</span>`;
       return;
     }
 
     // rAF: aspetta che il browser abbia fatto il layout della view
-    // prima di misurare clientWidth/clientHeight
     requestAnimationFrame(() => {
       renderGraph(memories, _graphMode);
     });
-    toast(`Graph: ${memories.length} nodes loaded`, 'success');
+    toast(ui('graphToastLoaded', memories.length) || `Graph: ${memories.length} nodes loaded`, 'success');
   } catch(e) {
     empty.innerHTML = `<span class="graph-empty-icon">✗</span><span>${esc(e.detail || String(e))}</span>`;
-    toast('Graph load failed: ' + (e.detail || String(e)), 'error');
+    toast((ui('graphToastFail') || 'Graph load failed') + ': ' + (e.detail || String(e)), 'error');
   } finally {
     btn.disabled = false;
-    btn.innerHTML = '<span class="btn-icon">⬡</span> Load graph';
+    btn.innerHTML = `<span class="btn-icon">⬡</span> ${ui('graphBtnLoad') || 'Load graph'}`;
   }
 }
 
