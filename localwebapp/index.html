@@ -64,64 +64,64 @@
   <nav class="nav-sections">
     <div class="nav-group-label" data-i18n="navMemory">Memory</div>
     <button class="nav-btn active" data-view="new-memory">
-      <span class="nav-icon">✦</span> New Memory
+      <span class="nav-icon">✦</span> <span data-i18n="navNewMemory">New Memory</span>
     </button>
     <button class="nav-btn" data-view="browse">
-      <span class="nav-icon">◈</span> Browse
+      <span class="nav-icon">◈</span> <span data-i18n="navBrowse">Browse</span>
     </button>
     <button class="nav-btn" data-view="search">
-      <span class="nav-icon">⌕</span> Search
+      <span class="nav-icon">⌕</span> <span data-i18n="navSearch">Search</span>
     </button>
 
     <div class="nav-group-label" data-i18n="navExplore">Explore</div>
     <button class="nav-btn" data-view="concepts">
-      <span class="nav-icon">◎</span> Concepts
+      <span class="nav-icon">◎</span> <span data-i18n="navConcepts">Concepts</span>
     </button>
     <button class="nav-btn" data-view="feelings">
-      <span class="nav-icon">◉</span> Feelings
+      <span class="nav-icon">◉</span> <span data-i18n="navFeelings">Feelings</span>
     </button>
     <button class="nav-btn" data-view="timeline">
-      <span class="nav-icon">⟿</span> Timeline
+      <span class="nav-icon">⟿</span> <span data-i18n="navTimeline">Timeline</span>
     </button>
 
     <div class="nav-group-label" data-i18n="navSystem">System</div>
     <button class="nav-btn" data-view="stats">
-      <span class="nav-icon">▣</span> Stats
+      <span class="nav-icon">▣</span> <span data-i18n="navStats">Stats</span>
     </button>
     <button class="nav-btn" data-view="export">
-      <span class="nav-icon">↗</span> Export
+      <span class="nav-icon">↗</span> <span data-i18n="navExport">Export</span>
     </button>
 
     <div class="nav-group-label" data-i18n="navBrain">Brain · LLM</div>
     <button class="nav-btn" data-view="perceive">
-      <span class="nav-icon">◈</span> Perceive
+      <span class="nav-icon">◈</span> <span data-i18n="navPerceive">Perceive</span>
     </button>
     <button class="nav-btn" data-view="ask">
-      <span class="nav-icon">?</span> Ask
+      <span class="nav-icon">?</span> <span data-i18n="navAsk">Ask</span>
     </button>
     <button class="nav-btn" data-view="reflect">
-      <span class="nav-icon">⟳</span> Reflect
+      <span class="nav-icon">⟳</span> <span data-i18n="navReflect">Reflect</span>
     </button>
     <button class="nav-btn" data-view="dream">
-      <span class="nav-icon">~</span> Dream
+      <span class="nav-icon">~</span> <span data-i18n="navDream">Dream</span>
     </button>
     <button class="nav-btn" data-view="introspect">
-      <span class="nav-icon">◎</span> Introspect
+      <span class="nav-icon">◎</span> <span data-i18n="navIntrospect">Introspect</span>
     </button>
     <button class="nav-btn" data-view="summarize">
-      <span class="nav-icon">≡</span> Summarize
+      <span class="nav-icon">≡</span> <span data-i18n="navSummarize">Summarize</span>
     </button>
   </nav>
 
   <!-- Theme Picker -->
   <div class="theme-picker">
     <div class="theme-picker-header">
-      <span class="theme-picker-label">Theme</span>
+      <span class="theme-picker-label" data-i18n="labelTheme">Theme</span>
       <span class="theme-current-name" id="theme-current-name">Terminal</span>
     </div>
-    <div class="theme-group-label">— dark</div>
+    <div class="theme-group-label" data-i18n="labelDark">— dark</div>
     <div class="theme-swatches" id="swatches-dark"></div>
-    <div class="theme-group-label">— light</div>
+    <div class="theme-group-label" data-i18n="labelLight">— light</div>
     <div class="theme-swatches" id="swatches-light"></div>
   </div>
 
@@ -185,7 +185,7 @@
       </div>
 
       <div class="form-actions">
-        <button class="btn-primary" id="btn-remember">
+        <button class="btn-primary" id="btn-remember" data-i18n="btnRemember">
           <span class="btn-icon">✦</span> Remember
         </button>
         <button class="btn-ghost" id="btn-clear" data-i18n="btnClear">Clear</button>
@@ -373,8 +373,8 @@
   <!-- ── PERCEIVE ── -->
   <section class="view" id="view-perceive">
     <div class="view-header">
-      <h1 class="brain-title">Perceive</h1>
-      <p class="view-desc">Raw input → LLM extracts concept, feeling, tags and enriches the content.</p>
+      <h1 class="brain-title" data-i18n="titlePerceive">Perceive</h1>
+      <p class="view-desc" data-i18n="descPerceive">Raw input → LLM extracts concept, feeling, tags and enriches the content.</p>
     </div>
     <div id="brain-status-perceive" class="brain-bar"></div>
     <div class="form-card">
@@ -388,7 +388,7 @@
           <input type="text" id="perceive-concept" placeholder="auto">
         </div>
         <div class="field">
-          <label>Feeling <span class="optional">override LLM</span></label>
+          <label data-i18n-label="lb"><span data-i18n="labelFeeling">Feeling</span> <span class="optional" data-i18n="optOverrideLLM">override LLM</span></label>
           <select id="perceive-feeling" class="feeling-select" data-mode="auto">
           </select>
         </div>
@@ -399,7 +399,7 @@
       </div>
       <div class="form-actions">
         <button class="btn-brain" id="btn-perceive">
-          <span class="btn-icon">◈</span> Perceive
+          <span class="btn-icon">◈</span> <span data-i18n="navPerceive">Perceive</span>
         </button>
       </div>
     </div>
@@ -409,8 +409,8 @@
   <!-- ── ASK ── -->
   <section class="view" id="view-ask">
     <div class="view-header">
-      <h1 class="brain-title">Ask</h1>
-      <p class="view-desc">Personal memory RAG — answers using only your real memories as context.</p>
+      <h1 class="brain-title" data-i18n="titleAsk">Ask</h1>
+      <p class="view-desc" data-i18n="descAsk">Personal memory RAG — answers using only your real memories as context.</p>
     </div>
     <div id="brain-status-ask" class="brain-bar"></div>
     <div class="form-card">
@@ -426,7 +426,7 @@
       </div>
       <div class="form-actions">
         <button class="btn-brain" id="btn-ask">
-          <span class="btn-icon">?</span> Ask
+          <span class="btn-icon">?</span> <span data-i18n="navAsk">Ask</span>
         </button>
       </div>
     </div>
@@ -436,8 +436,8 @@
   <!-- ── REFLECT ── -->
   <section class="view" id="view-reflect">
     <div class="view-header">
-      <h1 class="brain-title">Reflect</h1>
-      <p class="view-desc">Emotional arc of a concept over time — narrative arc and patterns.</p>
+      <h1 class="brain-title" data-i18n="titleReflect">Reflect</h1>
+      <p class="view-desc" data-i18n="descReflect">Emotional arc of a concept over time — narrative arc and patterns.</p>
     </div>
     <div id="brain-status-reflect" class="brain-bar"></div>
     <div class="filter-bar">
@@ -446,7 +446,7 @@
         <input type="text" id="reflect-concept" placeholder="" data-i18n-ph="phConcept">
       </div>
       <button class="btn-brain" id="btn-reflect">
-        <span class="btn-icon">⟳</span> Reflect
+        <span class="btn-icon">⟳</span> <span data-i18n="navReflect">Reflect</span>
       </button>
     </div>
     <div class="brain-response" id="reflect-result"></div>
@@ -455,8 +455,8 @@
   <!-- ── DREAM ── -->
   <section class="view" id="view-dream">
     <div class="view-header">
-      <h1 class="brain-title">Dream</h1>
-      <p class="view-desc">Free association — finds the hidden thread between distant memories.</p>
+      <h1 class="brain-title" data-i18n="titleDream">Dream</h1>
+      <p class="view-desc" data-i18n="descDream">Free association — finds the hidden thread between distant memories.</p>
     </div>
     <div id="brain-status-dream" class="brain-bar"></div>
     <div class="filter-bar">
@@ -465,7 +465,7 @@
         <input type="number" id="dream-n" value="8" min="2" max="20">
       </div>
       <button class="btn-brain" id="btn-dream">
-        <span class="btn-icon">~</span> Dream
+        <span class="btn-icon">~</span> <span data-i18n="navDream">Dream</span>
       </button>
     </div>
     <div class="brain-response" id="dream-result"></div>
@@ -474,13 +474,13 @@
   <!-- ── INTROSPECT ── -->
   <section class="view" id="view-introspect">
     <div class="view-header">
-      <h1 class="brain-title">Introspect</h1>
-      <p class="view-desc">Full psychological portrait — patterns, unresolved tensions, resources.</p>
+      <h1 class="brain-title" data-i18n="titleIntrospect">Introspect</h1>
+      <p class="view-desc" data-i18n="descIntrospect">Full psychological portrait — patterns, unresolved tensions, resources.</p>
     </div>
     <div id="brain-status-introspect" class="brain-bar"></div>
     <div class="filter-bar">
       <button class="btn-brain" id="btn-introspect">
-        <span class="btn-icon">◎</span> Introspect
+        <span class="btn-icon">◎</span> <span data-i18n="navIntrospect">Introspect</span>
       </button>
     </div>
     <div class="brain-response" id="introspect-result"></div>
@@ -489,8 +489,8 @@
   <!-- ── SUMMARIZE ── -->
   <section class="view" id="view-summarize">
     <div class="view-header">
-      <h1 class="brain-title">Summarize</h1>
-      <p class="view-desc">Summarises a group of memories in narrative, analytical or poetic style.</p>
+      <h1 class="brain-title" data-i18n="titleSummarize">Summarize</h1>
+      <p class="view-desc" data-i18n="descSummarize">Summarises a group of memories in narrative, analytical or poetic style.</p>
     </div>
     <div id="brain-status-summarize" class="brain-bar"></div>
     <div class="form-card">
@@ -518,7 +518,7 @@
       </div>
       <div class="form-actions">
         <button class="btn-brain" id="btn-summarize">
-          <span class="btn-icon">≡</span> Summarize
+          <span class="btn-icon">≡</span> <span data-i18n="navSummarize">Summarize</span>
         </button>
       </div>
     </div>
@@ -539,6 +539,7 @@
 <!-- Toast notifications -->
 <div id="toast-container"></div>
 
+<script src="i18n.js"></script>
 <script src="api.js"></script>
 </body>
 </html>
