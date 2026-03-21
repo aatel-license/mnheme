@@ -2034,3 +2034,214 @@ select option { background: var(--bg2); }
   line-height: 1.7;
   color: var(--text);
 }
+/* ── Language selector ─────────────────────────────────────── */
+.lang-selector {
+  display: flex;
+  gap: 2px;
+  padding: 8px 18px;
+  border-bottom: 1px solid var(--border);
+}
+.lang-btn {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  padding: 4px 0;
+  background: transparent;
+  border: 1px solid var(--border2);
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.15s;
+  flex: 1;
+  text-align: center;
+}
+.lang-btn:hover { color: var(--text); border-color: var(--muted); }
+.lang-btn.active {
+  border-color: var(--green);
+  color: var(--green);
+  background: rgba(74,222,128,0.06);
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   TOPBAR — fixed top bar shown only on mobile/tablet
+   Always hidden on desktop (≥ 901px)
+   ═══════════════════════════════════════════════════════════ */
+#topbar {
+  display: none; /* hidden by default — shown via media query */
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 48px;
+  z-index: 300;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  padding: 0 16px;
+  align-items: center;
+  gap: 12px;
+}
+.topbar-logo {
+  font-family: var(--mono);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  color: var(--green);
+  text-shadow: 0 0 10px rgba(74,222,128,0.3);
+}
+.topbar-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--muted);
+  margin-left: auto;
+}
+.topbar-status .status-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+}
+
+/* ── Hamburger button ────────────────────────────────────── */
+.hamburger {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px 4px;
+  flex-shrink: 0;
+}
+.hamburger span {
+  display: block;
+  width: 20px;
+  height: 1.5px;
+  background: var(--muted);
+  transition: all 0.25s ease;
+  transform-origin: center;
+}
+.hamburger:hover span { background: var(--green); }
+.hamburger.open span:nth-child(1) { transform: translateY(6.5px) rotate(45deg); }
+.hamburger.open span:nth-child(2) { opacity: 0; transform: scaleX(0); }
+.hamburger.open span:nth-child(3) { transform: translateY(-6.5px) rotate(-45deg); }
+
+/* ── Sidebar overlay ─────────────────────────────────────── */
+#sidebar-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  z-index: 199;
+  backdrop-filter: blur(2px);
+}
+#sidebar-overlay.visible { display: block; }
+
+/* ═══════════════════════════════════════════════════════════
+   RESPONSIVE — ≤ 900px
+   Sidebar becomes a slide-in drawer from the LEFT.
+   Topbar fixed at the top.
+   ═══════════════════════════════════════════════════════════ */
+@media (max-width: 900px) {
+
+  /* ── Show topbar ─────────────────────────────────────────── */
+  #topbar     { display: flex; }
+  .hamburger  { display: flex; }
+
+  /* ── Body: single column, no sidebar in flow ─────────────── */
+  body {
+    display: block;           /* leave grid, use block flow */
+    overflow-y: auto;
+    height: auto;
+    min-height: 100vh;
+    padding-top: 48px;        /* space for fixed topbar */
+  }
+
+  /* ── Sidebar: fixed drawer, slides in from left ─────────── */
+  #sidebar {
+    position: fixed;
+    top: 0; left: 0; bottom: 0;
+    width: 280px;
+    max-width: 85vw;
+    z-index: 200;
+    transform: translateX(-100%);
+    transition: transform 0.3s cubic-bezier(0.16,1,0.3,1);
+    box-shadow: 4px 0 32px rgba(0,0,0,0.6);
+    overflow-y: auto;
+  }
+  #sidebar.open { transform: translateX(0); }
+
+  /* ── Main and log: full width in normal flow ─────────────── */
+  #main {
+    width: 100%;
+    height: auto;
+    overflow-y: visible;
+    padding: 20px 16px;
+  }
+
+  #req-log-panel {
+    width: 100%;
+    height: var(--log-h);
+    position: sticky;
+    bottom: 0;
+    border-left: none;
+  }
+
+  /* ── Layout helpers ─────────────────────────────────────── */
+  .form-row { grid-template-columns: 1fr; }
+  .filter-bar { flex-wrap: wrap; gap: 10px; }
+  .filter-group { flex: 1 1 140px; }
+  #concepts-list { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+  #stats-grid { grid-template-columns: 1fr 1fr; }
+  #feelings-list { grid-template-columns: 1fr 1fr; }
+  .storage-info { grid-column: 1 / -1; }
+  .bar-label { width: 80px; font-size: 10px; }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   RESPONSIVE — ≤ 600px
+   ═══════════════════════════════════════════════════════════ */
+@media (max-width: 600px) {
+
+  :root { --log-h: 130px; }
+
+  body { padding-top: 44px; }
+  #topbar { height: 44px; }
+
+  #main { padding: 14px 12px; }
+
+  .form-card { padding: 14px 12px; }
+  .field { margin-bottom: 12px; }
+
+  .search-bar { flex-wrap: wrap; }
+  .search-bar input[type="text"]   { flex: 1 1 100%; }
+  .search-bar input[type="number"] { width: 60px; }
+
+  .tag-search-row { flex-wrap: wrap; gap: 8px; }
+  .tag-search-row input { flex: 1 1 auto; }
+
+  #concepts-list   { grid-template-columns: 1fr; }
+  #stats-grid      { grid-template-columns: 1fr; }
+  #feelings-list   { grid-template-columns: 1fr; }
+
+  .bar-row  { gap: 6px; }
+  .bar-label { width: 70px; font-size: 9px; }
+  .bar-val   { width: 36px; font-size: 9px; }
+
+  .timeline-track { padding-left: 20px; }
+
+  .memory-card { padding: 10px 12px; }
+  .memory-card-header { flex-wrap: wrap; gap: 4px; }
+  .memory-ts { margin-left: 0; width: 100%; font-size: 9px; order: 99; }
+
+  .log-entry { grid-template-columns: 46px 36px 1fr auto; gap: 5px; font-size: 9px; }
+
+  .filter-bar { flex-direction: column; }
+  .filter-bar .filter-group { flex: none; width: 100%; }
+  .btn-brain, .btn-primary, .btn-ghost { width: 100%; justify-content: center; }
+
+  #toast-container { left: 10px; right: 10px; }
+  .toast { max-width: 100%; }
+
+  .lang-selector { padding: 6px 12px; }
+  .lang-btn { font-size: 9px; }
+}
