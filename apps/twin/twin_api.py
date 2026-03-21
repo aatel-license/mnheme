@@ -1,4 +1,3 @@
-
 """
 twin_api.py — Digital Twin REST API
 =====================================
@@ -32,7 +31,7 @@ from pathlib import Path
 from typing import Optional, List
 
 sys.path.insert(0, os.path.dirname(__file__))
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+
 from mnheme        import MemoryDB
 from llm_provider  import LLMProvider
 from digital_twin  import (
@@ -42,23 +41,72 @@ from digital_twin  import (
 )
 
 # ── Config ──────────────────────────────────────────────────
-_DB_PATH      = os.environ.get("MNHEME_DB",      "mnheme.mnheme")
-_ENV_PATH     = os.environ.get("MNHEME_ENV",     ".env")
-_LLM_PROVIDER = os.environ.get("TWIN_LLM_PROVIDER", None)
+_DB_PATH        = os.environ.get("MNHEME_DB",        "mnheme.mnheme")
+_ENV_PATH       = os.environ.get("MNHEME_ENV",       ".env")
+_LLM_PROVIDER   = os.environ.get("TWIN_LLM_PROVIDER", None)
 
-# Percorso profilo — priorità:
-#   1. TWIN_PROFILE env var
-#   2. <stesso nome del DB>.twin.json  (es. mario.mnheme → mario.twin.json)
-#   3. twin_profile.json nella cwd (legacy fallback)
+# Directory radice dei personaggi — struttura:
+#   apps/twins/character/<nome>/<nome>-twin_profile.json
+#                               <nome>.mnheme  (opzionale, link o copia del db)
+#
+# Priorità risoluzione:
+#   1. TWIN_PROFILE     env var — path assoluto al json
+#   2. TWIN_CHARACTER   env var — nome del personaggio (cerca in CHARACTERS_DIR)
+#   3. <db_stem> come nome — cerca in CHARACTERS_DIR/<db_stem>/
+#   4. Legacy fallback   — <db_stem>-twin_profile.json accanto al db
+_CHARACTERS_DIR = Path(os.environ.get(
+    "TWIN_CHARACTERS_DIR",
+    str(Path(__file__).parent / "character")   # apps/twins/character/
+))
+
+
+def _character_dir(name: str) -> Path:
+    """Ritorna apps/twins/character/<name>/ (slug sicuro per filesystem)."""
+    import re
+    slug = re.sub(r"[^\w\-]", "_", name.lower().strip()).strip("_") or "unknown"
+    return _CHARACTERS_DIR / slug
+
+
 def _resolve_profile_path() -> Path:
+    """
+    Risolve il path del profilo JSON nell'ordine:
+    1. $TWIN_PROFILE          — path esplicito
+    2. $TWIN_CHARACTER        — nome personaggio → cerca in character/<name>/
+    3. stem del DB            — usa il nome del .mnheme come nome personaggio
+    4. Legacy                 — <db_stem>-twin_profile.json accanto al db
+    """
+    # 1. Path esplicito
     if os.environ.get("TWIN_PROFILE"):
         return Path(os.environ["TWIN_PROFILE"])
-    # Convenzione: <db_stem>-twin_profile.json  (es. mnheme-twin_profile.json)
-    auto = Path(_DB_PATH).parent / f"{Path(_DB_PATH).stem}-twin_profile.json"
+
+    # 2. Nome personaggio esplicito
+    char_name = os.environ.get("TWIN_CHARACTER", "").strip()
+    if char_name:
+        p = _character_dir(char_name) / f"{_slugify(char_name)}-twin_profile.json"
+        if p.exists():
+            return p
+        # Anche se non esiste ancora, questo è il path target
+        return p
+
+    # 3. Usa il nome del database come nome personaggio
+    db_stem = Path(_DB_PATH).stem
+    auto    = _character_dir(db_stem) / f"{db_stem}-twin_profile.json"
     if auto.exists():
         return auto
-    # Legacy fallback
-    return Path("twin_profile.json")
+
+    # 4. Legacy: accanto al db
+    legacy = Path(_DB_PATH).parent / f"{db_stem}-twin_profile.json"
+    if legacy.exists():
+        return legacy
+
+    # Default target per il prossimo setup
+    return _character_dir(db_stem) / f"{db_stem}-twin_profile.json"
+
+
+def _slugify(name: str) -> str:
+    import re
+    return re.sub(r"[^\w\-]", "_", name.lower().strip()).strip("_") or "unknown"
+
 
 _TWIN_PROFILE_FILE = _resolve_profile_path()
 
@@ -94,12 +142,16 @@ def _load_or_create_twin() -> Optional[DigitalTwin]:
     profile_path = _resolve_profile_path()
 
     if not profile_path.exists():
+        db_stem  = Path(_DB_PATH).stem
+        char_name = os.environ.get("TWIN_CHARACTER", db_stem)
+        char_dir  = _character_dir(char_name)
         print(
             f"[twin] Profilo non trovato.\n"
+            f"  Struttura attesa: apps/twins/character/<nome>/<nome>-twin_profile.json\n"
             f"  Cercato in:\n"
-            f"    1. $TWIN_PROFILE env var\n"
-            f"    2. {Path(_DB_PATH).parent / (Path(_DB_PATH).stem + '-twin_profile.json')}\n"
-            f"    3. twin_profile.json\n"
+            f"    1. $TWIN_PROFILE      = {os.environ.get('TWIN_PROFILE', '(non impostato)')}\n"
+            f"    2. $TWIN_CHARACTER    → {char_dir / (db_stem + '-twin_profile.json')}\n"
+            f"    3. {profile_path}\n"
             f"  Chiama POST /twin/setup per generarlo automaticamente dai ricordi."
         )
         return None
@@ -184,18 +236,20 @@ class TwinSetupIn(BaseModel):
 
 
 class TwinProfileOut(BaseModel):
-    name              : str
-    born              : int
-    died              : Optional[int]
-    age_at_death      : Optional[int]
-    language          : str
-    total_memories    : int
-    embargo_active    : bool
-    embargo_until     : Optional[int]
-    dominant_concepts : List[str]
-    emotional_map     : dict
-    curator           : str
-    epitaph           : str
+    name              : str            = "Sconosciuto"
+    born              : Optional[int]  = None
+    died              : Optional[int]  = None
+    age_at_death      : Optional[int]  = None
+    language          : str            = "italiano"
+    total_memories    : int            = 0
+    embargo_active    : bool           = False
+    embargo_until     : Optional[int]  = None
+    dominant_concepts : List[str]      = []
+    emotional_map     : dict           = {}
+    curator           : str            = ""
+    epitaph           : str            = ""
+    character_slug    : str            = ""
+    character_dir     : str            = ""
 
 
 class AskIn(BaseModel):
@@ -433,17 +487,21 @@ def setup_twin(body: TwinSetupIn):
         )
         _twin = DigitalTwin(db, llm, profile)
 
-        # Salva il profilo: <db_stem>-twin_profile.json
-        db_path   = Path(_DB_PATH)
-        save_path = db_path.parent / f"{db_path.stem}-twin_profile.json"
+        # Salva il profilo in apps/twins/character/<nome>/<nome>-twin_profile.json
+        char_name = _slugify(profile.name)
+        char_dir  = _character_dir(profile.name)
+        char_dir.mkdir(parents=True, exist_ok=True)
+        save_path = char_dir / f"{char_name}-twin_profile.json"
         save_path.write_text(
             json.dumps(inferred, ensure_ascii=False, indent=2),
             encoding="utf-8"
         )
         print(f"[twin] Profilo salvato → {save_path}")
+        print(f"[twin] Cartella personaggio: {char_dir}")
 
-        # Aggiorna il resolver per i prossimi avvii
-        os.environ.setdefault("TWIN_PROFILE", str(save_path))
+        # Aggiorna le env var per i prossimi avvii
+        os.environ["TWIN_PROFILE"]   = str(save_path)
+        os.environ["TWIN_CHARACTER"] = char_name
 
         return {
             "status"       : "ok",
@@ -475,19 +533,24 @@ def setup_twin(body: TwinSetupIn):
 def get_profile():
     twin = get_twin()
     s    = twin.profile_summary()
+    char_name = os.environ.get("TWIN_CHARACTER", Path(_DB_PATH).stem)
+    char_slug = _slugify(char_name)
+    char_dir  = _character_dir(char_name)
     return TwinProfileOut(
-        name              = s["name"],
-        born              = s["born"],
-        died              = s["died"],
-        age_at_death      = s["age_at_death"],
-        language          = s["language"],
-        total_memories    = s["total_memories"],
-        embargo_active    = s["embargo_active"],
-        embargo_until     = s["embargo_until"],
-        dominant_concepts = s["dominant_concepts"],
-        emotional_map     = s["emotional_map"],
-        curator           = s["curator"],
-        epitaph           = s["epitaph"],
+        name              = s.get("name")              or "Sconosciuto",
+        born              = s.get("born"),
+        died              = s.get("died"),
+        age_at_death      = s.get("age_at_death"),
+        language          = s.get("language")          or "italiano",
+        total_memories    = s.get("total_memories")    or 0,
+        embargo_active    = s.get("embargo_active")    or False,
+        embargo_until     = s.get("embargo_until"),
+        dominant_concepts = s.get("dominant_concepts") or [],
+        emotional_map     = s.get("emotional_map")     or {},
+        curator           = s.get("curator")           or "",
+        epitaph           = s.get("epitaph")           or "",
+        character_slug    = char_slug,
+        character_dir     = str(char_dir),
     )
 
 
@@ -637,6 +700,56 @@ def get_accessible_memories(
 
 
 @app.get(
+    "/twin/characters",
+    summary = "Lista dei personaggi disponibili in apps/twins/character/",
+    description = (
+        "Scansiona la directory character/ e ritorna tutti i personaggi "
+        "con profilo configurato. Usato dalla UI per il selettore personaggio."
+    ),
+)
+def get_characters():
+    """
+    Ritorna la lista dei personaggi in TWIN_CHARACTERS_DIR.
+    Ogni entry ha: slug, name, birth_year, death_year, active (= personaggio corrente).
+    """
+    chars = []
+    current_slug = _slugify(
+        os.environ.get("TWIN_CHARACTER", Path(_DB_PATH).stem)
+    )
+
+    if not _CHARACTERS_DIR.exists():
+        return {"characters": [], "directory": str(_CHARACTERS_DIR)}
+
+    for subdir in sorted(_CHARACTERS_DIR.iterdir()):
+        if not subdir.is_dir():
+            continue
+        # Cerca il profilo JSON nella cartella
+        profile_files = list(subdir.glob("*-twin_profile.json"))
+        if not profile_files:
+            continue
+        try:
+            data = json.loads(profile_files[0].read_text("utf-8"))
+            chars.append({
+                "slug"       : subdir.name,
+                "name"       : data.get("name") or subdir.name,
+                "birth_year" : data.get("birth_year"),
+                "death_year" : data.get("death_year"),
+                "language"   : data.get("language", "italiano"),
+                "epitaph"    : data.get("epitaph", ""),
+                "profile_file": str(profile_files[0]),
+                "active"     : subdir.name == current_slug,
+            })
+        except Exception:
+            continue
+
+    return {
+        "characters": chars,
+        "directory" : str(_CHARACTERS_DIR),
+        "current"   : current_slug,
+    }
+
+
+@app.get(
     "/twin/stats",
     summary = "Statistiche della memoria del twin per tier",
 )
@@ -647,3 +760,50 @@ def get_stats(tier: str = Query("family")):
     except ValueError:
         raise HTTPException(400, detail=f"Tier non valido: {tier}")
     return twin._vault.stats(access_tier)
+
+
+@app.get(
+    "/twin/characters",
+    summary = "Lista dei personaggi disponibili nella cartella character/",
+)
+def list_characters():
+    """
+    Scansiona TWIN_CHARACTERS_DIR e ritorna tutti i personaggi
+    che hanno un file *-twin_profile.json nella loro cartella.
+    """
+    chars = []
+    if not _CHARACTERS_DIR.exists():
+        return {"characters": [], "directory": str(_CHARACTERS_DIR)}
+
+    for char_dir in sorted(_CHARACTERS_DIR.iterdir()):
+        if not char_dir.is_dir():
+            continue
+        # Cerca il profilo JSON nella cartella
+        profiles = list(char_dir.glob("*-twin_profile.json"))
+        if not profiles:
+            continue
+        profile_path = profiles[0]
+        try:
+            data = json.loads(profile_path.read_text("utf-8"))
+            chars.append({
+                "slug"        : char_dir.name,
+                "name"        : data.get("name") or char_dir.name,
+                "birth_year"  : data.get("birth_year"),
+                "death_year"  : data.get("death_year"),
+                "language"    : data.get("language", "italiano"),
+                "epitaph"     : data.get("epitaph", ""),
+                "profile_file": str(profile_path),
+                "active"      : (
+                    char_dir.name == _slugify(
+                        os.environ.get("TWIN_CHARACTER", Path(_DB_PATH).stem)
+                    )
+                ),
+            })
+        except Exception:
+            continue
+
+    return {
+        "characters": chars,
+        "directory" : str(_CHARACTERS_DIR),
+        "active"    : os.environ.get("TWIN_CHARACTER", Path(_DB_PATH).stem),
+    }

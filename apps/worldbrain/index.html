@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="parchment">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>WorldBrain — MNHEME</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="app">
+
+  <!-- Sidebar -->
+  <div id="sidebar">
+    <div id="sidebar-header">
+      <div id="sidebar-logo">WORLDBRAIN</div>
+      <div id="sidebar-sub">MNHEME · NARRATIVE ENGINE</div>
+    </div>
+
+    <div id="char-list"></div>
+
+    <div id="sidebar-footer">
+      <button id="btn-new-char" onclick="openModal()">+ NEW CHARACTER</button>
+
+      <!-- Theme picker -->
+      <div id="theme-picker-wrapper">
+        <button id="btn-theme-toggle" onclick="toggleThemePanel()">
+          <span class="swatch"></span>Parchment <span style="font-size:9px;opacity:.6">○</span>
+        </button>
+        <div id="theme-panel"></div>
+      </div>
+
+      <!-- Language picker -->
+      <div id="lang-picker-wrapper">
+        <button id="btn-lang-toggle" onclick="toggleLangPanel()">EN</button>
+        <div id="lang-panel"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main area -->
+  <div id="main">
+
+    <!-- Mobile topbar -->
+    <div id="topbar">
+      <button id="btn-hamburger" onclick="toggleSidebar()" aria-label="Menu">&#9776;</button>
+      <span id="topbar-title">WORLDBRAIN</span>
+      <span id="topbar-char"></span>
+    </div>
+
+    <!-- LM Studio toggle (mobile only) -->
+    <button id="lm-toggle" onclick="toggleLmBar()">LM STUDIO</button>
+
+    <!-- LM Studio bar -->
+    <div id="lm-bar">
+      <span class="lbl">LM STUDIO</span>
+      <input id="lm-url"   class="lm-input" type="text" value="http://localhost:1234/v1/chat/completions">
+      <input id="lm-model" class="lm-input" type="text" placeholder="model name (leave blank = auto)">
+      <button id="btn-lm-save" onclick="saveLmConfig()">SAVE</button>
+      <span id="lm-saved">✓ saved</span>
+    </div>
+
+    <div id="content-area"></div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div id="modal-overlay" onclick="if(event.target===this)closeModal()">
+  <div id="modal">
+    <div id="modal-title">NEW CHARACTER</div>
+    <label id="modal-name-label" class="m-label">NAME</label>
+    <input id="modal-name" class="minp" placeholder="Elara Voss"
+      onkeydown="if(event.key==='Enter')modalOk()">
+    <label id="modal-arch-label" class="m-label">ARCHETYPE</label>
+    <input id="modal-arch" class="minp" placeholder="Exiled healer, keeper of lost things"
+      onkeydown="if(event.key==='Enter')modalOk()">
+    <div id="modal-btns">
+      <button id="btn-modal-cancel" onclick="closeModal()">Cancel</button>
+      <button id="btn-modal-ok"     onclick="modalOk()">Create</button>
+    </div>
+  </div>
+</div>
+
+<div id="sidebar-backdrop" onclick="closeSidebar()"></div>
+
+<script src="app.js"></script>
+</body>
+</html>

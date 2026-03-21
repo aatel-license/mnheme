@@ -31,6 +31,9 @@ HOST="${HOST:-0.0.0.0}"
 RELOAD=""
 DO_SETUP=true
 
+# Nome del personaggio (usato per la cartella character/<nome>/)
+TWIN_CHARACTER=""
+
 # Parametri profilo (tutti opzionali — il setup li inferisce dai ricordi)
 SETUP_NAME=""
 SETUP_BIRTH=""
@@ -45,10 +48,12 @@ SETUP_EMBARGO="0"
 # ── Parsing argomenti ─────────────────────────────────────────
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --db)           export MNHEME_DB="$2";         shift 2 ;;
-    --env)          export MNHEME_ENV="$2";        shift 2 ;;
-    --provider)     export TWIN_LLM_PROVIDER="$2"; shift 2 ;;
-    --profile)      export TWIN_PROFILE="$2";      shift 2 ;;
+    --db)           export MNHEME_DB="$2"; MNHEME_DB_EXPLICIT=1; shift 2 ;;
+    --env)          export MNHEME_ENV="$2";             shift 2 ;;
+    --provider)     export TWIN_LLM_PROVIDER="$2";      shift 2 ;;
+    --profile)      export TWIN_PROFILE="$2";           shift 2 ;;
+    --character)    TWIN_CHARACTER="$2";                shift 2 ;;
+    --characters-dir) export TWIN_CHARACTERS_DIR="$2"; shift 2 ;;
     --port)         PORT="$2";                     shift 2 ;;
     --host)         HOST="$2";                     shift 2 ;;
     --reload)       RELOAD="--reload";             shift   ;;
@@ -78,7 +83,9 @@ while [[ $# -gt 0 ]]; do
       echo "    --db PATH            Path al file .mnheme (default: ../../mnheme.mnheme)"
       echo "    --env PATH           Path al file .env    (default: ../../.env)"
       echo "    --provider NAME      Provider LLM attivo  (es: lm-studio, groq)"
-      echo "    --profile PATH       Path al file profilo .json"
+      echo "    --profile PATH       Path esplicito al file profilo .json"
+      echo "    --character NAME     Nome personaggio → cartella character/<n>/"
+      echo "    --characters-dir DIR Directory radice dei personaggi (default: ./character)"
       echo ""
       echo "  PROFILO TWIN (opzionali — il resto viene inferito dai ricordi)"
       echo "    --name NAME          Nome completo"
@@ -95,6 +102,8 @@ while [[ $# -gt 0 ]]; do
       echo "    ./run.sh"
       echo "    ./run.sh --name 'Mario Rossi' --birth-year 1942 --death-year 2024"
       echo "    ./run.sh --db ../../data/vita.mnheme --port 8002"
+      echo "    ./run.sh --character mario_rossi"
+      echo "    ./run.sh --character mario_rossi --no-setup --reload"
       echo "    ./run.sh --no-setup --reload"
       echo "    ./run.sh --provider lm-studio --host 0.0.0.0"
       echo ""
@@ -115,6 +124,21 @@ MNHEME_DB="${MNHEME_DB:-${ROOT_DIR}/mnheme.mnheme}"
 MNHEME_ENV="${MNHEME_ENV:-${ROOT_DIR}/.env}"
 export MNHEME_DB MNHEME_ENV
 
+# Directory personaggi — default: apps/twins/character/ (accanto a questo script)
+export TWIN_CHARACTERS_DIR="${TWIN_CHARACTERS_DIR:-${SCRIPT_DIR}/character}"
+
+# Se --character è stato passato, impostalo come env var
+if [[ -n "${TWIN_CHARACTER}" ]]; then
+  export TWIN_CHARACTER="${TWIN_CHARACTER}"
+  # Se --db non è stato impostato esplicitamente, cerca il db nella cartella character
+  CHAR_SLUG=$(echo "${TWIN_CHARACTER}" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9_-]/_/g')
+  CHAR_DB="${TWIN_CHARACTERS_DIR}/${CHAR_SLUG}/${CHAR_SLUG}.mnheme"
+  if [[ -z "${MNHEME_DB_EXPLICIT:-}" && -f "${CHAR_DB}" ]]; then
+    export MNHEME_DB="${CHAR_DB}"
+    info "DB dal personaggio: ${CHAR_DB}"
+  fi
+fi
+
 # ── Banner ────────────────────────────────────────────────────
 echo ""
 echo -e "${BOLD}MNHEME Digital Twin${NC}  ${DIM}v1.0${NC}"
@@ -122,6 +146,8 @@ echo "────────────────────────�
 info "Root progetto:  ${ROOT_DIR}"
 info "Database:       ${MNHEME_DB}"
 info "Config (.env):  ${MNHEME_ENV}"
+info "Personaggi:     ${TWIN_CHARACTERS_DIR}"
+[[ -n "${TWIN_CHARACTER:-}" ]] && info "Personaggio:    ${TWIN_CHARACTER}"
 info "Server:         http://${HOST}:${PORT}"
 [[ -n "${TWIN_LLM_PROVIDER:-}" ]] && info "Provider LLM:   ${TWIN_LLM_PROVIDER}"
 
@@ -198,8 +224,10 @@ print(json.dumps(vals))
 
   # Verifica se esiste già un profilo
   DB_STEM=$(basename "${MNHEME_DB}" .mnheme)
-  DB_DIR=$(dirname "${MNHEME_DB}")
-  PROFILE_AUTO="${DB_DIR}/${DB_STEM}-twin_profile.json"
+  CHAR_NAME="${TWIN_CHARACTER:-${DB_STEM}}"
+  CHAR_SLUG=$(echo "${CHAR_NAME}" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9_-]/_/g')
+  CHAR_DIR="${TWIN_CHARACTERS_DIR}/${CHAR_SLUG}"
+  PROFILE_AUTO="${CHAR_DIR}/${CHAR_SLUG}-twin_profile.json"
 
   if [[ -f "${PROFILE_AUTO}" ]] && [[ -z "${SETUP_NAME}${SETUP_BIRTH}${SETUP_DEATH}" ]]; then
     warn "Profilo già esistente: ${PROFILE_AUTO}"
