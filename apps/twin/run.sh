@@ -27,7 +27,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"   # root del progetto
 
 PORT="${PORT:-8001}"
-HOST="${HOST:-127.0.0.1}"
+HOST="${HOST:-0.0.0.0}"
 RELOAD=""
 DO_SETUP=true
 
@@ -70,7 +70,7 @@ while [[ $# -gt 0 ]]; do
       echo ""
       echo "  SERVER"
       echo "    --port PORT          Porta uvicorn (default: 8001)"
-      echo "    --host HOST          Host uvicorn (default: 127.0.0.1)"
+      echo "    --host HOST          Host uvicorn (default: 0.0.0.0 — raggiungibile dalla rete)"
       echo "    --reload             Abilita auto-reload uvicorn"
       echo "    --no-setup           Salta il setup — usa profilo esistente"
       echo ""
