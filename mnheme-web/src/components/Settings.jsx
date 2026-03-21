@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useSettings } from '../hooks/useSettings';
 import { PROVIDER_PRESETS } from '../core/constants';
+import SectionGuide from './SectionGuide';
 
 export default function Settings() {
   const { settings, updateSettings, testConnection, isConfigured } = useSettings();
@@ -32,6 +33,86 @@ export default function Settings() {
 
   return (
     <div>
+      <SectionGuide title="Quali provider LLM sono gratuiti?">
+        <p>
+          MNHEME funziona con qualsiasi provider LLM. Ecco i migliori <strong>gratuiti</strong>,
+          divisi per categoria.
+        </p>
+
+        <p style={{ marginTop: 12, marginBottom: 4 }}><strong>Gratuiti e locali (nessun limite)</strong></p>
+        <div className="guide-provider-grid">
+          <div className="guide-provider-card">
+            <div className="guide-provider-name">LM Studio</div>
+            <div className="guide-provider-detail">GUI desktop, modelli GGUF da HuggingFace. Nessuna API key necessaria. Limite = solo il tuo hardware.</div>
+            <div className="guide-provider-tag free">Gratuito</div>
+          </div>
+          <div className="guide-provider-card">
+            <div className="guide-provider-name">Ollama</div>
+            <div className="guide-provider-detail">CLI, supporta Llama, Mistral, DeepSeek, Qwen, Gemma e altri. Nessuna API key. Limite = solo il tuo hardware.</div>
+            <div className="guide-provider-tag free">Gratuito</div>
+          </div>
+        </div>
+
+        <p style={{ marginTop: 16, marginBottom: 4 }}><strong>Free tier cloud (non scadono)</strong></p>
+        <div className="guide-provider-grid">
+          <div className="guide-provider-card">
+            <div className="guide-provider-name">Google AI Studio</div>
+            <div className="guide-provider-detail">Il free tier più generoso. Gemini 2.5 Pro: 5 RPM, 100 richieste/giorno. Flash: 10 RPM, 250/giorno. Context 1M token.</div>
+            <div className="guide-provider-tag free">Gratuito</div>
+          </div>
+          <div className="guide-provider-card">
+            <div className="guide-provider-name">Mistral</div>
+            <div className="guide-provider-detail">Piano "Experiment": 1 miliardo di token/mese. Tutti i modelli inclusi, anche Codestral. Solo verifica telefono.</div>
+            <div className="guide-provider-tag free">Gratuito</div>
+          </div>
+          <div className="guide-provider-card">
+            <div className="guide-provider-name">Groq</div>
+            <div className="guide-provider-detail">~30 RPM. LLaMA 3.3 70B: ~500K token/giorno. Velocità eccezionale: inference hardware dedicato.</div>
+            <div className="guide-provider-tag free">Gratuito</div>
+          </div>
+          <div className="guide-provider-card">
+            <div className="guide-provider-name">Cerebras</div>
+            <div className="guide-provider-detail">1M token/giorno. Inference ultra-rapida a 2600+ token/sec. Context fino a 64K.</div>
+            <div className="guide-provider-tag free">Gratuito</div>
+          </div>
+          <div className="guide-provider-card">
+            <div className="guide-provider-name">OpenRouter</div>
+            <div className="guide-provider-detail">~27 modelli gratuiti (ID con suffisso :free). 20 RPM, 50 richieste/giorno sui modelli free.</div>
+            <div className="guide-provider-tag free">Gratuito</div>
+          </div>
+        </div>
+
+        <p style={{ marginTop: 16, marginBottom: 4 }}><strong>Crediti iniziali (si esauriscono)</strong></p>
+        <div className="guide-provider-grid">
+          <div className="guide-provider-card">
+            <div className="guide-provider-name">Together AI</div>
+            <div className="guide-provider-detail">Fino a $100 in crediti alla registrazione. Ampia scelta di modelli open-source.</div>
+            <div className="guide-provider-tag credits">$100 crediti</div>
+          </div>
+          <div className="guide-provider-card">
+            <div className="guide-provider-name">Anthropic</div>
+            <div className="guide-provider-detail">$5 alla registrazione. Claude Haiku, Sonnet, Opus. Studenti: fino a $300.</div>
+            <div className="guide-provider-tag credits">$5 crediti</div>
+          </div>
+          <div className="guide-provider-card">
+            <div className="guide-provider-name">SambaNova</div>
+            <div className="guide-provider-detail">$5 crediti (~30M token su Llama 8B). Scadenza: 30 giorni.</div>
+            <div className="guide-provider-tag credits">$5 / 30gg</div>
+          </div>
+          <div className="guide-provider-card">
+            <div className="guide-provider-name">Fireworks AI</div>
+            <div className="guide-provider-detail">$1 in crediti iniziali. Modelli a partire da $0.20/M token.</div>
+            <div className="guide-provider-tag credits">$1 crediti</div>
+          </div>
+        </div>
+
+        <div className="guide-note" style={{ marginTop: 14 }}>
+          <strong>Consiglio:</strong> per iniziare senza costi, usa LM Studio o Ollama in locale.
+          Come fallback cloud, Google AI Studio e Groq sono le scelte migliori.
+          Seleziona un preset dal menu qui sotto per configurare automaticamente l'URL.
+        </div>
+      </SectionGuide>
+
       <div className="form-card">
         <div className="field">
           <label>PROVIDER PRESET</label>

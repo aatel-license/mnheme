@@ -1309,3 +1309,60 @@ input[type="file"] {
   font-size: 11px;
   font-family: var(--font-mono);
 }
+
+/* ── Provider Guide Cards ── */
+.guide-provider-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 10px;
+  margin: 8px 0;
+}
+
+.guide-provider-card {
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--card-radius);
+  background: var(--bg2);
+  position: relative;
+}
+
+.guide-provider-name {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+.guide-provider-detail {
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+.guide-provider-tag {
+  display: inline-block;
+  margin-top: 8px;
+  padding: 2px 10px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+.guide-provider-tag.free {
+  background: rgba(90, 158, 111, 0.12);
+  color: #5a9e6f;
+  border: 1px solid rgba(90, 158, 111, 0.25);
+}
+.guide-provider-tag.credits {
+  background: rgba(212, 160, 23, 0.12);
+  color: #b8860b;
+  border: 1px solid rgba(212, 160, 23, 0.25);
+}
+
+@media (max-width: 500px) {
+  .guide-provider-grid {
+    grid-template-columns: 1fr;
+  }
+}
