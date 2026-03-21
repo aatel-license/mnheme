@@ -2759,3 +2759,12 @@ select option { background: var(--bg2); }
   .graph-btn-load { margin-left: 0; width: 100%; justify-content: center; }
   .graph-detail   { width: calc(100% - 24px); right: 12px; top: 12px; }
 }
+
+/* Placeholder per contenuti media nelle card (evita stampa base64) */
+.memory-content-placeholder {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--fg-dim);
+  opacity: .6;
+  font-style: italic;
+}

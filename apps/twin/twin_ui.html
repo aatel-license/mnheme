@@ -1,0 +1,1152 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gemello Digitale</title>
+  <style>
+    /* ── Reset & base ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg          : #0d0d0d;
+      --bg-card     : #141414;
+      --bg-elevated : #1a1a1a;
+      --border      : #2a2a2a;
+      --border-soft : #1e1e1e;
+      --fg          : #d4cfc8;
+      --fg-dim      : #7a7570;
+      --fg-muted    : #4a4540;
+      --gold        : #c9a84c;
+      --gold-pale   : #1e1a10;
+      --red-soft    : #8b3a3a;
+      --green-soft  : #3a6b4a;
+      --font-serif  : 'Georgia', 'Times New Roman', serif;
+      --font-mono   : 'JetBrains Mono', 'Fira Mono', 'Courier New', monospace;
+      --radius      : 6px;
+      --transition  : 0.18s ease;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: var(--font-serif);
+      font-size: 15px;
+      line-height: 1.7;
+    }
+
+    /* ── Layout ── */
+    .shell {
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      grid-template-rows: 100vh;
+      height: 100vh;
+    }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      background: var(--bg-card);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .twin-identity {
+      padding: 32px 24px 24px;
+      border-bottom: 1px solid var(--border-soft);
+      text-align: center;
+    }
+    .twin-avatar {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      background: var(--bg-elevated);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      margin: 0 auto 16px;
+      color: var(--gold);
+    }
+    .twin-name {
+      font-size: 17px;
+      font-weight: normal;
+      color: var(--fg);
+      letter-spacing: 0.02em;
+      margin-bottom: 4px;
+    }
+    .twin-dates {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--fg-dim);
+      letter-spacing: 0.08em;
+    }
+    .twin-epitaph {
+      margin-top: 12px;
+      font-style: italic;
+      font-size: 12px;
+      color: var(--fg-dim);
+      line-height: 1.5;
+      padding: 0 8px;
+    }
+
+    .tier-selector {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border-soft);
+    }
+    .tier-label {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--fg-muted);
+      margin-bottom: 8px;
+    }
+    .tier-btn {
+      display: block;
+      width: 100%;
+      text-align: left;
+      padding: 8px 12px;
+      margin-bottom: 4px;
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: var(--radius);
+      color: var(--fg-dim);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.05em;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+    .tier-btn:hover { color: var(--fg); border-color: var(--border); }
+    .tier-btn.active {
+      background: var(--gold-pale);
+      border-color: var(--gold);
+      color: var(--gold);
+    }
+    .tier-btn .tier-icon { margin-right: 8px; }
+    .tier-btn .tier-desc {
+      display: block;
+      font-size: 9px;
+      opacity: 0.6;
+      margin-top: 2px;
+      letter-spacing: 0.03em;
+    }
+
+    .nav-links {
+      padding: 12px 12px 0;
+      flex: 1;
+      overflow-y: auto;
+    }
+    .nav-btn {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      padding: 9px 12px;
+      background: transparent;
+      border: none;
+      border-radius: var(--radius);
+      color: var(--fg-dim);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.05em;
+      cursor: pointer;
+      text-align: left;
+      transition: var(--transition);
+    }
+    .nav-btn:hover { background: var(--bg-elevated); color: var(--fg); }
+    .nav-btn.active { background: var(--bg-elevated); color: var(--fg); }
+    .nav-icon { font-size: 14px; width: 18px; text-align: center; }
+
+    .sidebar-footer {
+      padding: 16px 20px;
+      border-top: 1px solid var(--border-soft);
+    }
+    .server-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--font-mono);
+      font-size: 9px;
+      color: var(--fg-muted);
+    }
+    .status-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--fg-muted);
+    }
+    .status-dot.online  { background: #4caf50; box-shadow: 0 0 6px #4caf5066; }
+    .status-dot.offline { background: var(--red-soft); }
+    .server-input {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--fg-dim);
+      padding: 4px 8px;
+      border-radius: 3px;
+      width: 100%;
+      margin-top: 6px;
+    }
+
+    /* ── Main ── */
+    .main {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .view { display: none; flex-direction: column; height: 100%; overflow: hidden; }
+    .view.active { display: flex; }
+
+    /* ── View: Consulta ── */
+    #view-ask {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .conversation {
+      flex: 1;
+      overflow-y: auto;
+      padding: 32px 48px;
+      display: flex;
+      flex-direction: column;
+      gap: 32px;
+    }
+
+    .msg {
+      max-width: 680px;
+      animation: fadeUp 0.3s ease;
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .msg-visitor { align-self: flex-end; }
+    .msg-twin    { align-self: flex-start; }
+
+    .msg-visitor .msg-bubble {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: 12px 12px 2px 12px;
+      padding: 14px 18px;
+      font-family: var(--font-serif);
+      font-size: 14px;
+      color: var(--fg);
+    }
+
+    .msg-twin .msg-bubble {
+      background: transparent;
+      padding: 0;
+      font-family: var(--font-serif);
+      font-size: 15px;
+      color: var(--fg);
+      line-height: 1.8;
+    }
+
+    .msg-twin .msg-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .msg-twin .msg-avatar {
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      background: var(--gold-pale);
+      border: 1px solid var(--gold);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      color: var(--gold);
+      flex-shrink: 0;
+    }
+    .msg-twin .msg-name {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--gold);
+      letter-spacing: 0.06em;
+    }
+    .msg-twin .msg-confidence {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      color: var(--fg-muted);
+      margin-left: auto;
+    }
+
+    .msg-caveat {
+      margin-top: 10px;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--fg-muted);
+      font-style: italic;
+      padding-left: 36px;
+    }
+
+    .msg-memories-count {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      color: var(--fg-muted);
+      padding-left: 36px;
+      margin-top: 4px;
+    }
+
+    .ask-bar {
+      border-top: 1px solid var(--border-soft);
+      padding: 20px 48px 24px;
+      background: var(--bg);
+    }
+    .ask-row {
+      display: flex;
+      gap: 12px;
+      align-items: flex-end;
+    }
+    .ask-textarea {
+      flex: 1;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px 16px;
+      font-family: var(--font-serif);
+      font-size: 14px;
+      color: var(--fg);
+      resize: none;
+      min-height: 48px;
+      max-height: 140px;
+      line-height: 1.5;
+      transition: border-color var(--transition);
+    }
+    .ask-textarea:focus { outline: none; border-color: var(--gold); }
+    .ask-textarea::placeholder { color: var(--fg-muted); font-style: italic; }
+    .ask-send {
+      background: var(--gold-pale);
+      border: 1px solid var(--gold);
+      color: var(--gold);
+      border-radius: var(--radius);
+      padding: 12px 20px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.06em;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: var(--transition);
+    }
+    .ask-send:hover { background: var(--gold); color: var(--bg); }
+    .ask-send:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* ── View: Lettera ── */
+    .letter-form {
+      padding: 40px 48px;
+      max-width: 720px;
+    }
+    .letter-form h2 {
+      font-size: 20px;
+      font-weight: normal;
+      color: var(--fg);
+      margin-bottom: 8px;
+    }
+    .letter-form p {
+      font-size: 13px;
+      color: var(--fg-dim);
+      margin-bottom: 28px;
+    }
+    .form-field { margin-bottom: 20px; }
+    .form-label {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--fg-dim);
+      display: block;
+      margin-bottom: 6px;
+    }
+    .form-input, .form-textarea {
+      width: 100%;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 10px 14px;
+      font-family: var(--font-serif);
+      font-size: 14px;
+      color: var(--fg);
+      transition: border-color var(--transition);
+    }
+    .form-input:focus, .form-textarea:focus { outline: none; border-color: var(--gold); }
+    .form-textarea { resize: vertical; min-height: 80px; line-height: 1.6; }
+    .btn-gold {
+      background: var(--gold-pale);
+      border: 1px solid var(--gold);
+      color: var(--gold);
+      border-radius: var(--radius);
+      padding: 10px 24px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.06em;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+    .btn-gold:hover { background: var(--gold); color: var(--bg); }
+    .btn-gold:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .letter-output {
+      padding: 0 48px 48px;
+      max-width: 720px;
+    }
+    .letter-text {
+      font-family: var(--font-serif);
+      font-size: 15px;
+      line-height: 1.9;
+      color: var(--fg);
+      white-space: pre-wrap;
+      background: var(--bg-card);
+      border: 1px solid var(--border-soft);
+      border-radius: var(--radius);
+      padding: 32px 36px;
+    }
+    .letter-meta {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--fg-muted);
+      margin-top: 12px;
+    }
+
+    /* ── View: Eredità ── */
+    .legacy-wrap {
+      padding: 40px 48px;
+      max-width: 740px;
+      overflow-y: auto;
+      flex: 1;
+    }
+    .legacy-section {
+      margin-bottom: 36px;
+    }
+    .legacy-section-title {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 12px;
+      opacity: 0.8;
+    }
+    .legacy-text {
+      font-family: var(--font-serif);
+      font-size: 15px;
+      line-height: 1.85;
+      color: var(--fg);
+    }
+    .legacy-arc {
+      font-style: italic;
+      color: var(--fg-dim);
+      font-size: 14px;
+      border-left: 2px solid var(--gold);
+      padding-left: 16px;
+      margin-top: 8px;
+    }
+    .legacy-concepts {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+    .concept-chip {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      padding: 4px 10px;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      color: var(--fg-dim);
+    }
+
+    /* ── View: Timeline ── */
+    .timeline-form {
+      padding: 32px 48px 20px;
+      display: flex;
+      gap: 12px;
+      align-items: flex-end;
+    }
+    .timeline-wrap {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0 48px 48px;
+    }
+    .timeline-arc {
+      font-style: italic;
+      color: var(--fg-dim);
+      font-size: 14px;
+      border-left: 2px solid var(--gold);
+      padding-left: 16px;
+      margin-bottom: 32px;
+      line-height: 1.7;
+    }
+    .timeline-track {
+      position: relative;
+      padding-left: 32px;
+    }
+    .timeline-track::before {
+      content: '';
+      position: absolute;
+      left: 7px;
+      top: 8px;
+      bottom: 8px;
+      width: 1px;
+      background: var(--border);
+    }
+    .timeline-entry {
+      position: relative;
+      margin-bottom: 28px;
+      animation: fadeUp 0.3s ease;
+    }
+    .timeline-entry::before {
+      content: '';
+      position: absolute;
+      left: -29px;
+      top: 7px;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+    }
+    .timeline-entry.feeling-positive::before { border-color: #4caf50; background: #4caf5022; }
+    .timeline-entry.feeling-negative::before { border-color: #e57373; background: #e5737322; }
+    .timeline-entry.feeling-neutral::before  { border-color: var(--gold); background: var(--gold-pale); }
+
+    .entry-date {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--fg-muted);
+      letter-spacing: 0.08em;
+      margin-bottom: 4px;
+    }
+    .entry-feeling {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.06em;
+      margin-bottom: 6px;
+    }
+    .entry-excerpt {
+      font-family: var(--font-serif);
+      font-size: 14px;
+      color: var(--fg);
+      line-height: 1.7;
+    }
+    .entry-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-top: 6px;
+    }
+    .entry-tag {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      padding: 2px 7px;
+      background: var(--bg-elevated);
+      border-radius: 3px;
+      color: var(--fg-muted);
+    }
+
+    /* ── Loading ── */
+    .loading-dots {
+      display: inline-flex;
+      gap: 4px;
+      padding: 8px 0;
+    }
+    .loading-dots span {
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: var(--gold);
+      opacity: 0.4;
+      animation: pulse 1.2s infinite;
+    }
+    .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes pulse {
+      0%, 80%, 100% { opacity: 0.2; transform: scale(0.8); }
+      40%           { opacity: 1;   transform: scale(1); }
+    }
+
+    /* ── Empty state ── */
+    .empty-state {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      color: var(--fg-muted);
+      font-size: 14px;
+      font-style: italic;
+      padding: 60px;
+      text-align: center;
+    }
+    .empty-icon { font-size: 32px; opacity: 0.4; }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    /* ── Setup overlay ── */
+    .setup-overlay {
+      position: fixed; inset: 0;
+      background: var(--bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    .setup-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 40px 48px;
+      width: 480px;
+      max-width: 90vw;
+    }
+    .setup-card h1 {
+      font-size: 22px;
+      font-weight: normal;
+      color: var(--fg);
+      margin-bottom: 6px;
+    }
+    .setup-card .setup-sub {
+      font-size: 13px;
+      color: var(--fg-dim);
+      margin-bottom: 28px;
+      line-height: 1.6;
+    }
+    .setup-error {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: #e57373;
+      margin-top: 12px;
+    }
+
+    @media (max-width: 700px) {
+      .shell { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+      .sidebar { height: auto; border-right: none; border-bottom: 1px solid var(--border); }
+      .conversation, .ask-bar, .letter-form, .letter-output,
+      .legacy-wrap, .timeline-form, .timeline-wrap { padding-left: 20px; padding-right: 20px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Setup overlay — mostrato se il twin non è configurato -->
+<div class="setup-overlay" id="setup-overlay" style="display:none">
+  <div class="setup-card">
+    <h1>Connetti al Twin</h1>
+    <p class="setup-sub">
+      Inserisci l'URL del server API del gemello digitale.<br>
+      Il profilo viene caricato automaticamente.
+    </p>
+    <div class="form-field">
+      <label class="form-label">URL Server</label>
+      <input class="form-input" id="setup-url" type="text"
+             value="http://localhost:8001" placeholder="http://localhost:8001">
+    </div>
+    <button class="btn-gold" id="btn-connect" onclick="connectToServer()">
+      Connetti
+    </button>
+    <div class="setup-error" id="setup-error"></div>
+  </div>
+</div>
+
+<div class="shell">
+
+  <!-- ── SIDEBAR ── -->
+  <aside class="sidebar">
+    <div class="twin-identity">
+      <div class="twin-avatar" id="twin-avatar">✦</div>
+      <div class="twin-name" id="twin-name">—</div>
+      <div class="twin-dates" id="twin-dates">—</div>
+      <div class="twin-epitaph" id="twin-epitaph"></div>
+    </div>
+
+    <div class="tier-selector">
+      <div class="tier-label">Livello di accesso</div>
+      <button class="tier-btn" data-tier="public">
+        <span class="tier-icon">◯</span> Pubblico
+        <span class="tier-desc">Ricordi condivisi con tutti</span>
+      </button>
+      <button class="tier-btn active" data-tier="family">
+        <span class="tier-icon">◎</span> Familiare
+        <span class="tier-desc">Ricordi di famiglia e vita</span>
+      </button>
+      <button class="tier-btn" data-tier="intimate">
+        <span class="tier-icon">◉</span> Intimo
+        <span class="tier-desc">Ricordi più profondi</span>
+      </button>
+    </div>
+
+    <nav class="nav-links">
+      <button class="nav-btn active" data-view="ask">
+        <span class="nav-icon">✦</span> Consulta
+      </button>
+      <button class="nav-btn" data-view="letter">
+        <span class="nav-icon">✉</span> Lettera
+      </button>
+      <button class="nav-btn" data-view="legacy">
+        <span class="nav-icon">◈</span> Eredità
+      </button>
+      <button class="nav-btn" data-view="timeline">
+        <span class="nav-icon">⟿</span> Arco nel tempo
+      </button>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="server-row">
+        <span class="status-dot" id="status-dot"></span>
+        <span id="status-label">non connesso</span>
+      </div>
+      <input class="server-input" id="server-url" value="http://localhost:8001">
+    </div>
+  </aside>
+
+  <!-- ── MAIN ── -->
+  <main class="main">
+
+    <!-- Consulta -->
+    <section class="view active" id="view-ask">
+      <div class="conversation" id="conversation">
+        <div class="empty-state" id="ask-empty">
+          <span class="empty-icon">✦</span>
+          <span>Poni una domanda al gemello digitale.<br>
+          Risponderà solo con ciò che ha davvero vissuto.</span>
+        </div>
+      </div>
+      <div class="ask-bar">
+        <div class="ask-row">
+          <textarea class="ask-textarea" id="ask-input"
+            placeholder="Cosa vorresti chiederle/gli?"
+            rows="1"
+            onkeydown="handleAskKey(event)"></textarea>
+          <button class="ask-send" id="btn-ask" onclick="sendQuestion()">
+            Chiedi →
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Lettera -->
+    <section class="view" id="view-letter">
+      <div class="letter-form">
+        <h2>Genera una lettera</h2>
+        <p>Il twin scriverà una lettera ai destinatari scelti,
+           ancorata ai ricordi reali su quel tema.</p>
+        <div class="form-field">
+          <label class="form-label">A chi è diretta</label>
+          <input class="form-input" id="letter-to"
+                 placeholder="es. mia figlia, i miei nipoti, chiunque mi abbia voluto bene">
+        </div>
+        <div class="form-field">
+          <label class="form-label">Tema centrale</label>
+          <input class="form-input" id="letter-theme"
+                 placeholder="es. il coraggio, cosa rimpiango, il lavoro, cosa conta davvero">
+        </div>
+        <button class="btn-gold" id="btn-letter" onclick="generateLetter()">
+          Genera lettera
+        </button>
+      </div>
+      <div class="letter-output" id="letter-output" style="display:none">
+        <div class="letter-text" id="letter-text"></div>
+        <div class="letter-meta" id="letter-meta"></div>
+      </div>
+    </section>
+
+    <!-- Eredità -->
+    <section class="view" id="view-legacy">
+      <div class="legacy-wrap" id="legacy-wrap">
+        <div class="empty-state" id="legacy-empty">
+          <span class="empty-icon">◈</span>
+          <span>Carica l'eredità emotiva per vedere il ritratto completo.</span>
+        </div>
+        <div id="legacy-content" style="display:none">
+          <div class="legacy-section">
+            <div class="legacy-section-title">Ritratto</div>
+            <div class="legacy-text" id="leg-portrait"></div>
+          </div>
+          <div class="legacy-section">
+            <div class="legacy-section-title">Valori vissuti</div>
+            <div class="legacy-text" id="leg-values"></div>
+          </div>
+          <div class="legacy-section">
+            <div class="legacy-section-title">Irrisolto</div>
+            <div class="legacy-text" id="leg-unresolved"></div>
+          </div>
+          <div class="legacy-section">
+            <div class="legacy-section-title">Messaggio</div>
+            <div class="legacy-text" id="leg-message" style="font-style:italic"></div>
+          </div>
+          <div class="legacy-section">
+            <div class="legacy-section-title">Arco della vita</div>
+            <div class="legacy-arc" id="leg-arc"></div>
+          </div>
+          <div class="legacy-section">
+            <div class="legacy-section-title">Concetti dominanti</div>
+            <div class="legacy-concepts" id="leg-concepts"></div>
+          </div>
+        </div>
+      </div>
+      <div style="padding:0 48px 24px">
+        <button class="btn-gold" id="btn-legacy" onclick="loadLegacy()">
+          Carica eredità
+        </button>
+      </div>
+    </section>
+
+    <!-- Timeline -->
+    <section class="view" id="view-timeline">
+      <div class="timeline-form">
+        <div style="flex:1">
+          <label class="form-label">Concept da esplorare</label>
+          <input class="form-input" id="timeline-concept"
+                 placeholder="es. padre, lavoro, amore, solitudine"
+                 onkeydown="if(event.key==='Enter') loadTimeline()">
+        </div>
+        <button class="btn-gold" id="btn-timeline" onclick="loadTimeline()">
+          Carica arco
+        </button>
+      </div>
+      <div class="timeline-wrap" id="timeline-wrap">
+        <div class="empty-state" id="timeline-empty">
+          <span class="empty-icon">⟿</span>
+          <span>Inserisci un concept per vedere come il rapporto emotivo è cambiato nel tempo.</span>
+        </div>
+        <div id="timeline-content" style="display:none">
+          <div class="timeline-arc" id="tl-arc"></div>
+          <div class="timeline-track" id="tl-track"></div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+/* ── Config ── */
+let API = localStorage.getItem('twin_api_url') || 'http://localhost:8001';
+let CURRENT_TIER = 'family';
+let TWIN_NAME    = '';
+let TWIN_INITIAL = '✦';
+
+document.getElementById('server-url').value = API;
+document.getElementById('server-url').addEventListener('change', function() {
+  API = this.value.trim();
+  localStorage.setItem('twin_api_url', API);
+  loadProfile();
+});
+
+/* ── Helpers ── */
+const esc = s => String(s)
+  .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+  .replace(/"/g,'&quot;');
+
+async function apiFetch(path, opts = {}) {
+  const res = await fetch(API + path, {
+    headers: { 'Content-Type': 'application/json', 'accept': 'application/json' },
+    ...opts,
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
+  return data;
+}
+
+function setStatus(online) {
+  const dot   = document.getElementById('status-dot');
+  const label = document.getElementById('status-label');
+  dot.className   = 'status-dot ' + (online ? 'online' : 'offline');
+  label.textContent = online ? 'connesso' : 'offline';
+}
+
+/* ── Profile ── */
+async function loadProfile() {
+  try {
+    const p = await apiFetch('/twin/profile');
+    TWIN_NAME    = p.name;
+    TWIN_INITIAL = p.name.charAt(0).toUpperCase();
+
+    document.getElementById('twin-avatar').textContent = TWIN_INITIAL;
+    document.getElementById('twin-name').textContent   = p.name;
+    const died = p.died ? ` — ${p.died}` : '';
+    document.getElementById('twin-dates').textContent  = `${p.born}${died}`;
+    if (p.epitaph) {
+      document.getElementById('twin-epitaph').textContent = `"${p.epitaph}"`;
+    }
+    document.getElementById('setup-overlay').style.display = 'none';
+    setStatus(true);
+  } catch(e) {
+    setStatus(false);
+    document.getElementById('setup-overlay').style.display = 'flex';
+  }
+}
+
+async function connectToServer() {
+  API = document.getElementById('setup-url').value.trim();
+  document.getElementById('server-url').value = API;
+  localStorage.setItem('twin_api_url', API);
+  const err = document.getElementById('setup-error');
+  err.textContent = '';
+  try {
+    await loadProfile();
+  } catch(e) {
+    err.textContent = 'Impossibile connettersi. Verifica URL e server.';
+  }
+}
+
+/* ── Tier ── */
+document.querySelectorAll('.tier-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.tier-btn').forEach(b => b.classList.remove('active'));
+    this.classList.add('active');
+    CURRENT_TIER = this.dataset.tier;
+  });
+});
+
+/* ── Nav ── */
+document.querySelectorAll('.nav-btn[data-view]').forEach(btn => {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    this.classList.add('active');
+    const view = document.getElementById('view-' + this.dataset.view);
+    if (view) view.classList.add('active');
+  });
+});
+
+/* ── Ask ── */
+function handleAskKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendQuestion();
+  }
+}
+
+async function sendQuestion() {
+  const input = document.getElementById('ask-input');
+  const q     = input.value.trim();
+  if (!q) return;
+
+  const conv  = document.getElementById('conversation');
+  const empty = document.getElementById('ask-empty');
+  empty.style.display = 'none';
+  input.value = '';
+  input.style.height = '';
+
+  // Messaggio visitatore
+  conv.innerHTML += `
+    <div class="msg msg-visitor">
+      <div class="msg-bubble">${esc(q)}</div>
+    </div>`;
+
+  // Placeholder loading
+  const loadId = 'load-' + Date.now();
+  conv.innerHTML += `
+    <div class="msg msg-twin" id="${loadId}">
+      <div class="msg-meta">
+        <div class="msg-avatar">${TWIN_INITIAL}</div>
+        <span class="msg-name">${esc(TWIN_NAME)}</span>
+      </div>
+      <div class="msg-bubble">
+        <div class="loading-dots"><span></span><span></span><span></span></div>
+      </div>
+    </div>`;
+  conv.scrollTop = conv.scrollHeight;
+
+  const btn = document.getElementById('btn-ask');
+  btn.disabled = true;
+
+  try {
+    const r = await apiFetch('/twin/ask', {
+      method: 'POST',
+      body: JSON.stringify({ question: q, tier: CURRENT_TIER }),
+    });
+
+    const confidenceColor = r.confidence.includes('alta') ? '#4caf50'
+                          : r.confidence.includes('media') ? var_gold()
+                          : '#e57373';
+
+    document.getElementById(loadId).outerHTML = `
+      <div class="msg msg-twin">
+        <div class="msg-meta">
+          <div class="msg-avatar">${TWIN_INITIAL}</div>
+          <span class="msg-name">${esc(TWIN_NAME)}</span>
+          <span class="msg-confidence" style="color:${confidenceColor}">
+            ${esc(r.confidence)}
+          </span>
+        </div>
+        <div class="msg-bubble">${formatResponse(r.response)}</div>
+        ${r.caveat ? `<div class="msg-caveat">${esc(r.caveat)}</div>` : ''}
+        <div class="msg-memories-count">${r.memories_used} ricordi</div>
+      </div>`;
+  } catch(e) {
+    document.getElementById(loadId).outerHTML = `
+      <div class="msg msg-twin">
+        <div class="msg-meta">
+          <div class="msg-avatar">${TWIN_INITIAL}</div>
+          <span class="msg-name">${esc(TWIN_NAME)}</span>
+        </div>
+        <div class="msg-bubble" style="color:#e57373">${esc(e.message)}</div>
+      </div>`;
+  } finally {
+    btn.disabled = false;
+    conv.scrollTop = conv.scrollHeight;
+  }
+}
+
+function var_gold() { return '#c9a84c'; }
+
+function formatResponse(text) {
+  // Converte newline in paragrafi, no HTML injection
+  return text.split('\n\n')
+    .filter(p => p.trim())
+    .map(p => `<p style="margin-bottom:0.8em">${esc(p.trim())}</p>`)
+    .join('');
+}
+
+/* ── Letter ── */
+async function generateLetter() {
+  const to    = document.getElementById('letter-to').value.trim();
+  const theme = document.getElementById('letter-theme').value.trim();
+  if (!to || !theme) return;
+
+  const btn    = document.getElementById('btn-letter');
+  const output = document.getElementById('letter-output');
+  btn.disabled = true;
+  btn.textContent = 'Generazione…';
+  output.style.display = 'none';
+
+  try {
+    const r = await apiFetch('/twin/letter', {
+      method: 'POST',
+      body: JSON.stringify({ to, theme, tier: CURRENT_TIER }),
+    });
+    document.getElementById('letter-text').textContent = r.text;
+    document.getElementById('letter-meta').textContent =
+      `${r.memories_used} ricordi  ·  tema: ${r.theme}`;
+    output.style.display = '';
+  } catch(e) {
+    document.getElementById('letter-text').textContent = 'Errore: ' + e.message;
+    output.style.display = '';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Genera lettera';
+  }
+}
+
+/* ── Legacy ── */
+async function loadLegacy() {
+  const btn     = document.getElementById('btn-legacy');
+  const empty   = document.getElementById('legacy-empty');
+  const content = document.getElementById('legacy-content');
+  btn.disabled  = true;
+  btn.textContent = 'Caricamento…';
+  empty.innerHTML = '<div class="loading-dots"><span></span><span></span><span></span></div>';
+
+  try {
+    const r = await apiFetch(`/twin/legacy?tier=${CURRENT_TIER}`);
+    document.getElementById('leg-portrait').textContent   = r.portrait;
+    document.getElementById('leg-values').textContent     = r.core_values;
+    document.getElementById('leg-unresolved').textContent = r.unresolved;
+    document.getElementById('leg-message').textContent    = r.message;
+    document.getElementById('leg-arc').textContent        = r.emotional_arc;
+    document.getElementById('leg-concepts').innerHTML     =
+      r.dominant_concepts.map(c => `<span class="concept-chip">${esc(c)}</span>`).join('');
+    empty.style.display   = 'none';
+    content.style.display = '';
+  } catch(e) {
+    empty.innerHTML = `<span style="color:#e57373">${esc(e.message)}</span>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Carica eredità';
+  }
+}
+
+/* ── Timeline ── */
+const POSITIVE_FEELINGS = new Set([
+  'gioia','amore','serenità','gratitudine','orgoglio','speranza',
+  'eccitazione','sollievo','stupore','curiosità','sorpresa',
+]);
+const NEGATIVE_FEELINGS = new Set([
+  'ansia','paura','tristezza','rabbia','vergogna','senso_di_colpa',
+  'solitudine','delusione','invidia','imbarazzo','rassegnazione',
+]);
+
+function feelingClass(f) {
+  if (POSITIVE_FEELINGS.has(f)) return 'feeling-positive';
+  if (NEGATIVE_FEELINGS.has(f)) return 'feeling-negative';
+  return 'feeling-neutral';
+}
+
+async function loadTimeline() {
+  const concept = document.getElementById('timeline-concept').value.trim();
+  if (!concept) return;
+
+  const btn     = document.getElementById('btn-timeline');
+  const empty   = document.getElementById('timeline-empty');
+  const content = document.getElementById('timeline-content');
+  btn.disabled  = true;
+  btn.textContent = 'Caricamento…';
+  empty.innerHTML = '<div class="loading-dots"><span></span><span></span><span></span></div>';
+  empty.style.display = '';
+  content.style.display = 'none';
+
+  try {
+    const r = await apiFetch(
+      `/twin/timeline/${encodeURIComponent(concept)}?tier=${CURRENT_TIER}`
+    );
+    document.getElementById('tl-arc').textContent = r.arc;
+
+    const track = document.getElementById('tl-track');
+    track.innerHTML = r.entries.map(e => `
+      <div class="timeline-entry ${feelingClass(e.feeling)}">
+        <div class="entry-date">${esc(e.date)}</div>
+        <div class="entry-feeling" style="color:${feelingColorInline(e.feeling)}">
+          ${esc(e.feeling)}
+        </div>
+        <div class="entry-excerpt">${esc(e.excerpt)}</div>
+        <div class="entry-tags">
+          ${e.tags.map(t => `<span class="entry-tag">${esc(t)}</span>`).join('')}
+        </div>
+      </div>
+    `).join('');
+
+    empty.style.display   = 'none';
+    content.style.display = '';
+  } catch(e) {
+    empty.innerHTML = `<span style="color:#e57373">${esc(e.message)}</span>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Carica arco';
+  }
+}
+
+function feelingColorInline(f) {
+  const map = {
+    gioia:'#81c784', amore:'#f48fb1', serenità:'#80cbc4',
+    gratitudine:'#a5d6a7', orgoglio:'#90caf9', speranza:'#ce93d8',
+    nostalgia:'#ce93d8', malinconia:'#90a4ae', ansia:'#ffcc80',
+    paura:'#ef9a9a', rabbia:'#ef5350', tristezza:'#90a4ae',
+    vergogna:'#ff8a65', solitudine:'#78909c',
+  };
+  return map[f] || '#9e9e9e';
+}
+
+/* ── Auto-resize textarea ── */
+document.getElementById('ask-input').addEventListener('input', function() {
+  this.style.height = '';
+  this.style.height = Math.min(this.scrollHeight, 140) + 'px';
+});
+
+/* ── Init ── */
+loadProfile();
+</script>
+</body>
+</html>
