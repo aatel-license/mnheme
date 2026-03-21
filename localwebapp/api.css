@@ -2501,8 +2501,7 @@ select option { background: var(--bg2); }
    GRAPH VIEW — D3 force network
    ═══════════════════════════════════════════════════════════ */
 
-#view-graph { display: flex; flex-direction: column; height: 100%; min-height: 0; }
-#view-graph.active { display: flex !important; }
+#view-graph.active { display: flex !important; flex-direction: column; height: 100%; min-height: 0; }
 
 /* Controls bar */
 .graph-controls {
@@ -2604,7 +2603,7 @@ select option { background: var(--bg2); }
   border: 1px solid var(--border);
   border-radius: 6px;
   background: var(--bg-card);
-  overflow: hidden;
+  /* NO overflow:hidden — altrimenti detail e tooltip vengono tagliati */
 }
 #graph-svg {
   display: none;
@@ -2648,17 +2647,19 @@ select option { background: var(--bg2); }
 .graph-tooltip {
   position: absolute;
   pointer-events: none;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
+  background: var(--bg, #1a1a1a);
+  background-color: var(--bg, #1a1a1a);
+  border: 1px solid var(--border, #333);
   border-radius: 5px;
   padding: 8px 11px;
   font-family: var(--font-mono);
   font-size: 10px;
-  color: var(--fg);
+  color: var(--fg, #e0e0e0);
   max-width: 220px;
   line-height: 1.5;
-  z-index: 100;
-  box-shadow: 0 4px 16px #0007;
+  z-index: 400;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.6);
+  opacity: 1 !important;
 }
 .graph-tt-tag {
   display: inline-block;
@@ -2674,20 +2675,24 @@ select option { background: var(--bg2); }
 /* Detail panel */
 .graph-detail {
   position: absolute;
-  top: 55px;
+  top: 12px;
   right: 12px;
-  width: 280px;
-  max-height: 70%;
+  width: 290px;
+  max-height: calc(100% - 24px);
   overflow-y: auto;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
+  /* Background solido — non trasparente */
+  background: var(--bg, #1a1a1a);
+  background-color: var(--bg, #1a1a1a);
+  border: 1px solid var(--green, #4caf50);
   border-radius: 6px;
   padding: 12px 14px;
   font-family: var(--font-mono);
   font-size: 11px;
-  color: var(--fg);
-  z-index: 200;
-  box-shadow: 0 6px 24px #0009;
+  color: var(--fg, #e0e0e0);
+  z-index: 300;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.05);
+  /* Forza opacità piena */
+  opacity: 1 !important;
 }
 .graph-detail-header {
   display: flex;
@@ -2752,5 +2757,5 @@ select option { background: var(--bg2); }
 @media (max-width: 640px) {
   .graph-controls { gap: 8px 12px; }
   .graph-btn-load { margin-left: 0; width: 100%; justify-content: center; }
-  .graph-detail   { width: calc(100% - 20px); right: 10px; }
+  .graph-detail   { width: calc(100% - 24px); right: 12px; top: 12px; }
 }
