@@ -941,6 +941,494 @@ document.getElementById('btn-load-feelings').addEventListener('click', async () 
 });
 
 /* ═══════════════════════════════════════════════════════════
+   VIEW: GRAPH — D3 force simulation
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── Colori feeling ── */
+const FEELING_COLORS = {
+  amore     : '#ff6b9d', gioia       : '#ffd93d', serenità   : '#6bcb77',
+  orgoglio  : '#4d96ff', nostalgia   : '#c77dff', malinconia : '#9d9d9d',
+  ansia     : '#ff9f43', paura       : '#ee5a24', rabbia     : '#e74c3c',
+  tristezza : '#74b9ff', vergogna    : '#a29bfe', solitudine : '#636e72',
+  gratitudine:'#00b894', speranza    : '#00cec9', sorpresa   : '#fdcb6e',
+  neutro    : '#b2bec3',
+};
+const FEELING_COLOR_DEFAULT = '#b2bec3';
+
+function feelingColor(f) {
+  return FEELING_COLORS[(f||'').toLowerCase()] || FEELING_COLOR_DEFAULT;
+}
+
+/* ── Stato grafo ── */
+let _graphSim      = null;   // d3 simulation
+let _graphData     = null;   // { nodes, links }
+let _graphMode     = 'concept';
+let _graphZoom     = null;
+
+/* ── Util: troncatura ── */
+const trunc = (s, n=28) => s && s.length > n ? s.slice(0, n) + '…' : (s || '');
+
+/* ── Build graph data from memories ── */
+function buildGraphData(memories, mode) {
+  const nodeMap  = new Map();   // id → node
+  const linkMap  = new Map();   // "a|b" → link
+
+  const addNode = (id, data) => {
+    if (!nodeMap.has(id)) nodeMap.set(id, { id, ...data });
+  };
+  const addLink = (a, b, type, label='') => {
+    if (a === b) return;
+    const key = a < b ? `${a}|${b}` : `${b}|${a}`;
+    if (linkMap.has(key)) {
+      linkMap.get(key).strength = Math.min(linkMap.get(key).strength + 0.15, 1);
+    } else {
+      linkMap.set(key, { source: a, target: b, type, label, strength: 0.4 });
+    }
+  };
+
+  // ── Memory nodes (always added) ──
+  memories.forEach(m => {
+    addNode(m.memory_id, {
+      kind    : 'memory',
+      concept : m.concept,
+      feeling : m.feeling,
+      content : m.content,
+      media_type: m.media_type || 'text',
+      tags    : m.tags || [],
+      ts      : m.timestamp,
+      color   : feelingColor(m.feeling),
+      radius  : 9,
+      label   : trunc(m.concept, 18),
+    });
+  });
+
+  if (mode === 'concept' || mode === 'all') {
+    // Group by concept: link memories sharing the same concept
+    const byConceptMap = new Map();
+    memories.forEach(m => {
+      if (!byConceptMap.has(m.concept)) byConceptMap.set(m.concept, []);
+      byConceptMap.get(m.concept).push(m.memory_id);
+    });
+    byConceptMap.forEach((ids, concept) => {
+      if (ids.length < 2) return;
+      // Add a concept hub node
+      const hubId = `__concept__${concept}`;
+      addNode(hubId, {
+        kind   : 'concept',
+        label  : concept,
+        color  : '#4d96ff',
+        radius : 18,
+        concept,
+      });
+      ids.forEach(id => addLink(id, hubId, 'concept', concept));
+    });
+  }
+
+  if (mode === 'feeling' || mode === 'all') {
+    const byFeelingMap = new Map();
+    memories.forEach(m => {
+      if (!byFeelingMap.has(m.feeling)) byFeelingMap.set(m.feeling, []);
+      byFeelingMap.get(m.feeling).push(m.memory_id);
+    });
+    byFeelingMap.forEach((ids, feeling) => {
+      if (ids.length < 2) return;
+      const hubId = `__feeling__${feeling}`;
+      addNode(hubId, {
+        kind    : 'feeling',
+        label   : feeling,
+        color   : feelingColor(feeling),
+        radius  : 16,
+        feeling,
+      });
+      ids.forEach(id => addLink(id, hubId, 'feeling', feeling));
+    });
+  }
+
+  if (mode === 'tag' || mode === 'all') {
+    const byTagMap = new Map();
+    memories.forEach(m => {
+      (m.tags || []).forEach(tag => {
+        if (!byTagMap.has(tag)) byTagMap.set(tag, []);
+        byTagMap.get(tag).push(m.memory_id);
+      });
+    });
+    byTagMap.forEach((ids, tag) => {
+      if (ids.length < 2) return;
+      const hubId = `__tag__${tag}`;
+      addNode(hubId, {
+        kind   : 'tag',
+        label  : tag,
+        color  : '#ffd93d',
+        radius : 13,
+        tag,
+      });
+      ids.forEach(id => addLink(id, hubId, 'tag', tag));
+    });
+  }
+
+  return {
+    nodes : [...nodeMap.values()],
+    links : [...linkMap.values()],
+  };
+}
+
+/* ── Render legend ── */
+function renderGraphLegend(mode, memories) {
+  const el = document.getElementById('graph-legend');
+  if (!el) return;
+  const items = [];
+
+  if (mode === 'feeling' || mode === 'all') {
+    const feelings = [...new Set(memories.map(m => m.feeling))];
+    feelings.forEach(f => {
+      items.push(`<span class="graph-legend-item">
+        <span class="graph-legend-dot" style="background:${feelingColor(f)}"></span>${esc(f)}
+      </span>`);
+    });
+  }
+
+  const kindLabels = {
+    memory  : ['◉', '#888',    'Memory'],
+    concept : ['⬡', '#4d96ff', 'Concept hub'],
+    feeling : ['⬡', '#ff6b9d', 'Feeling hub'],
+    tag     : ['⬡', '#ffd93d', 'Tag hub'],
+  };
+  if (mode === 'all') {
+    ['concept','feeling','tag'].forEach(k => {
+      const [sym, col, lbl] = kindLabels[k];
+      items.push(`<span class="graph-legend-item">
+        <span class="graph-legend-dot" style="background:${col}"></span>${lbl}
+      </span>`);
+    });
+  }
+
+  el.innerHTML = items.join('');
+}
+
+/* ── Main render ── */
+function renderGraph(memories, mode) {
+  const wrap  = document.getElementById('graph-wrap');
+  const svg   = document.getElementById('graph-svg');
+  const empty = document.getElementById('graph-empty');
+  const tt    = document.getElementById('graph-tooltip');
+
+  empty.style.display = 'none';
+  svg.style.display   = 'block';
+
+  // Legge le dimensioni reali dopo il layout — usa getBoundingClientRect
+  // che funziona anche con position:absolute e unità percentuali
+  const rect = wrap.getBoundingClientRect();
+  const W    = rect.width  > 0 ? rect.width  : 900;
+  const H    = rect.height > 0 ? rect.height : 480;
+
+  // Clear previous
+  if (_graphSim) { _graphSim.stop(); _graphSim = null; }
+  d3.select(svg).selectAll('*').remove();
+
+  const data = buildGraphData(memories, mode);
+  _graphData = data;
+
+  if (!data.nodes.length) {
+    empty.style.display = '';
+    svg.style.display   = 'none';
+    return;
+  }
+
+  const svgEl = d3.select(svg)
+    .attr('width',   W)
+    .attr('height',  H)
+    .attr('viewBox', `0 0 ${W} ${H}`)
+    .style('width',  '100%')
+    .style('height', '100%');
+
+  // Defs: arrowhead marker
+  const defs = svgEl.append('defs');
+  ['concept','feeling','tag','all'].forEach(type => {
+    const color = type === 'concept' ? '#4d96ff'
+                : type === 'feeling' ? '#ff6b9d'
+                : type === 'tag'     ? '#ffd93d'
+                : '#555';
+    defs.append('marker')
+      .attr('id',           `arrow-${type}`)
+      .attr('viewBox',      '0 -4 10 8')
+      .attr('refX',         20)
+      .attr('refY',         0)
+      .attr('markerWidth',  6)
+      .attr('markerHeight', 6)
+      .attr('orient',       'auto')
+      .append('path')
+        .attr('d',    'M0,-4L10,0L0,4')
+        .attr('fill', color)
+        .attr('opacity', 0.5);
+  });
+
+  // Zoom container
+  const g = svgEl.append('g').attr('class', 'graph-g');
+  _graphZoom = d3.zoom()
+    .scaleExtent([0.15, 4])
+    .on('zoom', (e) => g.attr('transform', e.transform));
+  svgEl.call(_graphZoom);
+
+  // Force simulation
+  _graphSim = d3.forceSimulation(data.nodes)
+    .force('link',   d3.forceLink(data.links)
+      .id(d => d.id)
+      .distance(d => {
+        if (d.type === 'concept') return 90;
+        if (d.type === 'feeling') return 80;
+        return 70;
+      })
+      .strength(d => d.strength))
+    .force('charge', d3.forceManyBody()
+      .strength(d => d.kind === 'memory' ? -180 : -320))
+    .force('center', d3.forceCenter(W / 2, H / 2))
+    .force('collide', d3.forceCollide(d => d.radius + 8))
+    .alphaDecay(0.025);
+
+  // Links
+  const linkColor = t => t === 'concept' ? '#4d96ff44'
+                       : t === 'feeling' ? '#ff6b9d44'
+                       : t === 'tag'     ? '#ffd93d44'
+                       : '#55555544';
+
+  const link = g.append('g').attr('class','graph-links')
+    .selectAll('line')
+    .data(data.links)
+    .join('line')
+      .attr('stroke',        d => linkColor(d.type))
+      .attr('stroke-width',  d => 1 + d.strength * 2)
+      .attr('stroke-dasharray', d => d.type === 'tag' ? '4,3' : null);
+
+  // Nodes
+  const node = g.append('g').attr('class','graph-nodes')
+    .selectAll('g')
+    .data(data.nodes)
+    .join('g')
+      .attr('class', d => `graph-node graph-node-${d.kind}`)
+      .call(d3.drag()
+        .on('start', (e, d) => {
+          if (!e.active) _graphSim.alphaTarget(0.3).restart();
+          d.fx = d.x; d.fy = d.y;
+        })
+        .on('drag',  (e, d) => { d.fx = e.x; d.fy = e.y; })
+        .on('end',   (e, d) => {
+          if (!e.active) _graphSim.alphaTarget(0);
+          d.fx = null; d.fy = null;
+        })
+      );
+
+  // Circle
+  node.append('circle')
+    .attr('r',           d => d.radius)
+    .attr('fill',        d => d.color + (d.kind === 'memory' ? 'cc' : 'ee'))
+    .attr('stroke',      d => d.color)
+    .attr('stroke-width',d => d.kind === 'memory' ? 1.5 : 2.5)
+    .attr('class',       'graph-circle');
+
+  // Icon inside hub nodes
+  node.filter(d => d.kind !== 'memory')
+    .append('text')
+      .attr('text-anchor', 'middle')
+      .attr('dominant-baseline', 'central')
+      .attr('font-size', d => d.kind === 'concept' ? 11 : 9)
+      .attr('fill', '#fff')
+      .attr('pointer-events', 'none')
+      .text(d => d.kind === 'concept' ? '◈' : d.kind === 'feeling' ? '◉' : '⬡');
+
+  // Label below node
+  node.append('text')
+    .attr('class', 'graph-label')
+    .attr('text-anchor', 'middle')
+    .attr('dy', d => d.radius + 12)
+    .attr('font-size', d => d.kind === 'memory' ? 9 : 10)
+    .attr('fill', d => d.kind === 'memory' ? '#aaa' : '#ddd')
+    .attr('pointer-events', 'none')
+    .text(d => d.label || '');
+
+  // Tooltip + click
+  node.on('mouseover', (e, d) => {
+      tt.style.display = '';
+      let html = `<b>${esc(d.label)}</b>`;
+      if (d.kind === 'memory') {
+        const mt = (d.media_type || 'text').toUpperCase();
+        const preview = d.content && d.content.startsWith('data:')
+          ? `[${mt} file]`
+          : trunc(d.content || '', 80);
+        html += `<br><span style="color:${d.color}">${esc(d.feeling)}</span>`;
+        html += `<br><span style="opacity:.6">${esc(preview)}</span>`;
+        if (d.tags?.length) html += `<br>${d.tags.map(t=>`<span class="graph-tt-tag">${esc(t)}</span>`).join('')}`;
+      } else {
+        html += ` <span style="opacity:.5">(${d.kind})</span>`;
+      }
+      tt.innerHTML = html;
+    })
+    .on('mousemove', (e) => {
+      const rect = wrap.getBoundingClientRect();
+      let x = e.clientX - rect.left + 14;
+      let y = e.clientY - rect.top  - 10;
+      if (x + 200 > W) x -= 220;
+      tt.style.left = x + 'px';
+      tt.style.top  = y + 'px';
+    })
+    .on('mouseout',  ()  => { tt.style.display = 'none'; })
+    .on('click', (e, d) => {
+      e.stopPropagation();
+      showGraphDetail(d, memories);
+    });
+
+  svgEl.on('click', () => {
+    document.getElementById('graph-detail').style.display = 'none';
+  });
+
+  // Simulation tick
+  _graphSim.on('tick', () => {
+    link
+      .attr('x1', d => d.source.x)
+      .attr('y1', d => d.source.y)
+      .attr('x2', d => d.target.x)
+      .attr('y2', d => d.target.y);
+    node.attr('transform', d => `translate(${d.x},${d.y})`);
+  });
+
+  renderGraphLegend(mode, memories);
+}
+
+/* ── Detail panel ── */
+function showGraphDetail(d, memories) {
+  const panel = document.getElementById('graph-detail');
+  const title = document.getElementById('graph-detail-title');
+  const body  = document.getElementById('graph-detail-body');
+
+  title.textContent = d.label;
+  panel.style.display = '';
+
+  if (d.kind === 'memory') {
+    const m = memories.find(m => m.memory_id === d.id);
+    if (!m) return;
+    const mt = (m.media_type || 'text').toLowerCase();
+    const isMedia = mt !== 'text';
+    const contentHtml = isMedia
+      ? memoryContentHtml(m)
+      : `<div class="graph-detail-content">${esc(m.content)}</div>`;
+
+    body.innerHTML = `
+      <div class="graph-detail-chips">
+        <span class="perceive-chip concept">◈ ${esc(m.concept)}</span>
+        <span class="perceive-chip feeling" style="background:${feelingColor(m.feeling)}22;border-color:${feelingColor(m.feeling)}66;color:${feelingColor(m.feeling)}">${esc(m.feeling)}</span>
+        ${mt !== 'text' ? `<span class="perceive-chip media-type">${mt.toUpperCase()}</span>` : ''}
+      </div>
+      ${contentHtml}
+      ${m.note ? `<div class="graph-detail-note">${esc(m.note)}</div>` : ''}
+      ${m.tags?.length ? `<div class="memory-tags">${m.tags.map(t=>`<span class="memory-tag">${esc(t)}</span>`).join('')}</div>` : ''}
+      <div class="memory-id">${m.memory_id}</div>`;
+  } else {
+    // Hub node — list connected memories
+    const related = memories.filter(m => {
+      if (d.kind === 'concept') return m.concept === d.concept;
+      if (d.kind === 'feeling') return m.feeling === d.feeling;
+      if (d.kind === 'tag')     return (m.tags||[]).includes(d.tag);
+      return false;
+    });
+    body.innerHTML = `<div class="graph-detail-hub-count">${related.length} memories</div>` +
+      related.map(m => `
+        <div class="graph-detail-mem-item">
+          <span class="graph-detail-mem-dot" style="background:${feelingColor(m.feeling)}"></span>
+          <span class="graph-detail-mem-text">${esc(trunc(m.content?.startsWith('data:') ? `[${(m.media_type||'file').toUpperCase()}]` : m.content, 60))}</span>
+        </div>`).join('');
+  }
+}
+
+/* ── Load + wire controls ── */
+let _graphMemories = [];
+
+async function loadGraph() {
+  const btn     = document.getElementById('btn-graph-load');
+  const wrap    = document.getElementById('graph-wrap');
+  const empty   = document.getElementById('graph-empty');
+  const feeling = document.getElementById('graph-feeling-filter').value;
+  const concept = document.getElementById('graph-concept-filter').value.trim();
+  const limit   = parseInt(document.getElementById('graph-limit').value) || 60;
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="loading"></span> Loading…';
+  empty.innerHTML = '<span class="graph-empty-icon">⬡</span><span>Loading memories…</span>';
+  empty.style.display = '';
+  document.getElementById('graph-svg').style.display = 'none';
+
+  try {
+    let path = `/memories?limit=${limit}&oldest_first=false`;
+    if (feeling) path += `&feeling=${encodeURIComponent(feeling)}`;
+    let memories = await GET(path);
+
+    if (concept) {
+      memories = memories.filter(m =>
+        m.concept.toLowerCase().includes(concept.toLowerCase())
+      );
+    }
+
+    _graphMemories = memories;
+
+    if (!memories.length) {
+      empty.innerHTML = '<span class="graph-empty-icon">◎</span><span>No memories match the current filters.</span>';
+      return;
+    }
+
+    // rAF: aspetta che il browser abbia fatto il layout della view
+    // prima di misurare clientWidth/clientHeight
+    requestAnimationFrame(() => {
+      renderGraph(memories, _graphMode);
+    });
+    toast(`Graph: ${memories.length} nodes loaded`, 'success');
+  } catch(e) {
+    empty.innerHTML = `<span class="graph-empty-icon">✗</span><span>${esc(e.detail || String(e))}</span>`;
+    toast('Graph load failed: ' + (e.detail || String(e)), 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<span class="btn-icon">⬡</span> Load graph';
+  }
+}
+
+document.getElementById('btn-graph-load').addEventListener('click', loadGraph);
+
+document.getElementById('graph-detail-close').addEventListener('click', () => {
+  document.getElementById('graph-detail').style.display = 'none';
+});
+
+// Mode buttons
+document.querySelectorAll('.graph-mode-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.graph-mode-btn').forEach(b => b.classList.remove('active'));
+    this.classList.add('active');
+    _graphMode = this.dataset.mode;
+    if (_graphMemories.length) {
+      requestAnimationFrame(() => renderGraph(_graphMemories, _graphMode));
+    }
+  });
+});
+
+// Fit / reset zoom
+function graphFitZoom() {
+  const svg  = document.getElementById('graph-svg');
+  const wrap = document.getElementById('graph-wrap');
+  if (!_graphZoom || !svg) return;
+  d3.select(svg).transition().duration(400)
+    .call(_graphZoom.transform, d3.zoomIdentity
+      .translate(wrap.clientWidth/2, wrap.clientHeight/2)
+      .scale(0.9));
+}
+
+// Reload on view enter
+document.querySelectorAll('.nav-btn[data-view="graph"]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    // Populate feeling filter if empty
+    const sel = document.getElementById('graph-feeling-filter');
+    if (sel && sel.options.length <= 1) {
+      populateFeelingSelect(sel);
+    }
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════
    VIEW: TIMELINE
    ═══════════════════════════════════════════════════════════ */
 
