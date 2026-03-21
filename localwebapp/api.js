@@ -318,19 +318,71 @@ function feelingHtml(feeling) {
   return `<span class="memory-feeling feeling-${CSS.escape(feeling)}" data-feeling="${esc(feeling)}">${label}</span>`;
 }
 
+function memoryContentHtml(m) {
+  const mt      = (m.media_type || 'text').toLowerCase();
+  const content = m.content || '';
+
+  // Rileva se il content è un data URL o base64 puro
+  const isDataUrl = content.startsWith('data:');
+  const isB64     = !isDataUrl && mt !== 'text' && content.length > 100 && !/\s/.test(content.slice(0, 60));
+
+  // Ricostruisci il src URL
+  let src = '';
+  if (isDataUrl) {
+    src = content;
+  } else if (isB64) {
+    const mimeMap = { image: 'image/jpeg', video: 'video/mp4', audio: 'audio/mpeg', doc: 'application/octet-stream' };
+    src = `data:${mimeMap[mt] || 'application/octet-stream'};base64,${content}`;
+  }
+
+  if (mt === 'image' && src) {
+    return `<div class="memory-media-wrap">
+      <img class="memory-img" src="${src}" alt="memory image" loading="lazy"
+           onclick="this.classList.toggle('memory-img-full')">
+    </div>`;
+  }
+
+  if (mt === 'video' && src) {
+    return `<div class="memory-media-wrap">
+      <video class="memory-video" controls preload="metadata" src="${src}"></video>
+    </div>`;
+  }
+
+  if (mt === 'audio' && src) {
+    return `<div class="memory-media-wrap">
+      <audio class="memory-audio" controls preload="metadata" src="${src}"></audio>
+    </div>`;
+  }
+
+  if (mt === 'doc' && src) {
+    // Dimensione stimata dal b64
+    const kb = Math.round(content.length * 0.75 / 1024);
+    return `<div class="memory-doc-block">
+      <span class="memory-doc-icon">📄</span>
+      <span class="memory-doc-label">Document (~${kb} KB)</span>
+      <a class="memory-doc-dl" href="${src}" download="document">↓ Download</a>
+    </div>`;
+  }
+
+  // Testo puro (o fallback)
+  return `<div class="memory-content">${esc(content)}</div>`;
+}
+
 function memoryCardHtml(m, i) {
   const tags   = (m.tags || []).map(t => `<span class="memory-tag">${esc(t)}</span>`).join('');
   const tagRow = tags ? `<div class="memory-tags">${tags}</div>` : '';
   const note   = m.note ? `<div class="memory-note">${esc(m.note)}</div>` : '';
+  const mt     = (m.media_type || 'text').toLowerCase();
+  const mtClass = mt !== 'text' ? ` media-${mt}` : '';
   return `
-    <div class="memory-card" style="animation-delay:${i*30}ms">
+    <div class="memory-card${mtClass}" style="animation-delay:${i*30}ms">
       <div class="memory-card-header">
         <span class="memory-concept">${esc(m.concept)}</span>
         ${feelingHtml(m.feeling)}
-        <span class="memory-mediatype">${(m.media_type||'text').toUpperCase()}</span>
+        <span class="memory-mediatype">${mt.toUpperCase()}</span>
         <span class="memory-ts">${fmtDate(m.timestamp)}</span>
       </div>
-      <div class="memory-content">${esc(m.content)}</div>
+      ${memoryContentHtml(m)}
       ${note}
       ${tagRow}
       <div class="memory-id">${m.memory_id}</div>
@@ -453,19 +505,163 @@ document.getElementById('btn-clear').addEventListener('click', () => {
   document.getElementById('new-mediatype').value   = 'text';
   document.getElementById('char-count').textContent = '0 chars';
   document.getElementById('tag-preview').innerHTML  = '';
+  _applyMediaType('text');
+  _clearFileSelection();
+  document.getElementById('new-file-input').value = '';
   const ra = document.getElementById('new-memory-response');
   ra.classList.remove('visible','error');
   ra.innerHTML = '';
 });
 
+/* ═══════════════════════════════════════════════════════════
+   MEDIA TYPE — dynamic content area
+   ═══════════════════════════════════════════════════════════ */
+
+const MEDIA_CONFIG = {
+  text:  { label: 'Content',   hint: '',                          icon: '✦', accept: '' },
+  image: { label: 'Image file', hint: 'jpg, png, gif, webp, svg', icon: '⬆', accept: 'image/*' },
+  video: { label: 'Video file', hint: 'mp4, webm, mov, avi',      icon: '⬆', accept: 'video/*' },
+  audio: { label: 'Audio file', hint: 'mp3, wav, ogg, m4a, flac', icon: '⬆', accept: 'audio/*' },
+  doc:   { label: 'Document',   hint: 'pdf, docx, txt, md',       icon: '⬆', accept: '.pdf,.doc,.docx,.txt,.md,application/pdf' },
+};
+
+let _selectedFile = null;
+
+function _applyMediaType(mt) {
+  const isText  = mt === 'text';
+  const fieldT  = document.getElementById('field-content-text');
+  const fieldF  = document.getElementById('field-content-file');
+  if (!fieldT || !fieldF) return;
+
+  fieldT.style.display = isText ? '' : 'none';
+  fieldF.style.display = isText ? 'none' : '';
+
+  if (!isText) {
+    const cfg = MEDIA_CONFIG[mt] || MEDIA_CONFIG.doc;
+    document.getElementById('file-field-label').textContent = cfg.label;
+    document.getElementById('file-drop-hint').textContent   = cfg.hint;
+    document.getElementById('file-drop-icon').textContent   = cfg.icon;
+    document.getElementById('new-file-input').accept        = cfg.accept;
+    // reset preview whenever media type changes
+    _clearFileSelection();
+  }
+}
+
+function _clearFileSelection() {
+  _selectedFile = null;
+  document.getElementById('file-selected').style.display   = 'none';
+  document.getElementById('file-drop-inner').style.display = '';
+  document.getElementById('file-preview-wrap').style.display = 'none';
+  ['file-preview-img','file-preview-video','file-preview-audio'].forEach(id => {
+    const el = document.getElementById(id);
+    el.style.display = 'none';
+    el.src = '';
+  });
+  document.getElementById('file-preview-doc').style.display = 'none';
+  document.getElementById('new-content-file-data').value   = '';
+  document.getElementById('file-char-count').textContent   = '';
+}
+
+function _handleFileSelect(file) {
+  if (!file) return;
+  _selectedFile = file;
+
+  const mt   = document.getElementById('new-mediatype').value;
+  const name = file.name;
+  const size = file.size > 1024*1024
+    ? (file.size / (1024*1024)).toFixed(2) + ' MB'
+    : (file.size / 1024).toFixed(1) + ' KB';
+
+  document.getElementById('file-drop-inner').style.display = 'none';
+  document.getElementById('file-selected').style.display   = 'flex';
+  document.getElementById('file-selected-name').textContent = name;
+  document.getElementById('file-selected-size').textContent = size;
+
+  // Preview
+  const wrap = document.getElementById('file-preview-wrap');
+  wrap.style.display = '';
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const dataUrl  = e.target.result;
+    const b64      = dataUrl.split(',')[1];
+    document.getElementById('new-content-file-data').value = dataUrl; // store full dataURL
+    document.getElementById('file-char-count').textContent = `${(b64.length / 1024).toFixed(1)} KB base64`;
+
+    ['file-preview-img','file-preview-video','file-preview-audio'].forEach(id => {
+      document.getElementById(id).style.display = 'none';
+    });
+    document.getElementById('file-preview-doc').style.display = 'none';
+
+    if (mt === 'image') {
+      const img = document.getElementById('file-preview-img');
+      img.src = dataUrl; img.style.display = '';
+    } else if (mt === 'video') {
+      const vid = document.getElementById('file-preview-video');
+      vid.src = dataUrl; vid.style.display = '';
+    } else if (mt === 'audio') {
+      const aud = document.getElementById('file-preview-audio');
+      aud.src = dataUrl; aud.style.display = '';
+    } else {
+      const doc = document.getElementById('file-preview-doc');
+      doc.textContent = `📄 ${name}`;
+      doc.style.display = '';
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
+document.getElementById('new-mediatype').addEventListener('change', function () {
+  _applyMediaType(this.value);
+});
+
+// Click to open file dialog
+document.getElementById('file-drop-zone').addEventListener('click', (e) => {
+  if (e.target.id === 'file-clear-btn') return;
+  document.getElementById('new-file-input').click();
+});
+
+document.getElementById('new-file-input').addEventListener('change', function () {
+  if (this.files[0]) _handleFileSelect(this.files[0]);
+});
+
+document.getElementById('file-clear-btn').addEventListener('click', (e) => {
+  e.stopPropagation();
+  _clearFileSelection();
+  document.getElementById('new-file-input').value = '';
+});
+
+// Drag and drop
+const _dz = document.getElementById('file-drop-zone');
+_dz.addEventListener('dragover',  (e) => { e.preventDefault(); _dz.classList.add('drag-over'); });
+_dz.addEventListener('dragleave', ()  => { _dz.classList.remove('drag-over'); });
+_dz.addEventListener('drop',      (e) => {
+  e.preventDefault();
+  _dz.classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) _handleFileSelect(file);
+});
+
+
 document.getElementById('btn-remember').addEventListener('click', async () => {
   const concept    = document.getElementById('new-concept').value.trim();
   const feeling    = document.getElementById('new-feeling').value;
-  const content    = document.getElementById('new-content').value.trim();
-  const note       = document.getElementById('new-note').value.trim();
   const mediaType  = document.getElementById('new-mediatype').value;
+  const note       = document.getElementById('new-note').value.trim();
   const tagsRaw    = document.getElementById('new-tags').value;
   const tags       = tagsRaw.split(',').map(t => t.trim()).filter(Boolean);
+
+  // Content depends on media type
+  let content;
+  if (mediaType === 'text') {
+    content = document.getElementById('new-content').value.trim();
+  } else {
+    content = document.getElementById('new-content-file-data').value;
+    if (!content) {
+      toast('Please select a file first.', 'error');
+      return;
+    }
+  }
 
   if (!concept || !feeling || !content) {
     toast('Concept, feeling and content are required.', 'error');
@@ -892,6 +1088,163 @@ document.getElementById('btn-download').addEventListener('click', () => {
 });
 
 /* ═══════════════════════════════════════════════════════════
+   IMPORT — JSON restore
+   ═══════════════════════════════════════════════════════════ */
+
+let _importData = null;
+
+function _setImportFile(file) {
+  if (!file || !file.name.endsWith('.json')) {
+    toast('Please select a valid .json file.', 'error');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+      // Accept both array and {memories:[...]} shapes
+      const memories = Array.isArray(data) ? data : (data.memories || data.records || []);
+      if (!Array.isArray(memories)) throw new Error('Unrecognized format');
+
+      _importData = memories;
+      const size = file.size > 1024 ? (file.size/1024).toFixed(1)+' KB' : file.size+' B';
+
+      document.getElementById('import-drop-inner').style.display  = 'none';
+      document.getElementById('import-file-selected').style.display = 'flex';
+      document.getElementById('import-file-name').textContent = file.name;
+      document.getElementById('import-file-size').textContent = size;
+
+      // Preview stats
+      const concepts = [...new Set(memories.map(m => m.concept).filter(Boolean))];
+      const feelings = [...new Set(memories.map(m => m.feeling).filter(Boolean))];
+      const preview  = document.getElementById('import-preview');
+      document.getElementById('import-preview-meta').innerHTML =
+        `<span class="import-stat"><b>${memories.length}</b> memories</span>` +
+        `<span class="import-stat"><b>${concepts.length}</b> concepts</span>` +
+        `<span class="import-stat"><b>${feelings.length}</b> feelings</span>`;
+      preview.style.display = '';
+
+      document.getElementById('btn-import').disabled = false;
+      toast(`Loaded ${memories.length} memories from file`, 'success');
+    } catch (err) {
+      toast('Invalid JSON or unrecognized format: ' + err.message, 'error');
+    }
+  };
+  reader.readAsText(file);
+}
+
+function _clearImportFile() {
+  _importData = null;
+  document.getElementById('import-drop-inner').style.display    = '';
+  document.getElementById('import-file-selected').style.display = 'none';
+  document.getElementById('import-preview').style.display       = 'none';
+  document.getElementById('import-file-input').value            = '';
+  document.getElementById('btn-import').disabled                = true;
+  const ra = document.getElementById('import-result');
+  ra.classList.remove('visible','error');
+  ra.innerHTML = '';
+}
+
+// Drop zone — click
+const _idz = document.getElementById('import-drop-zone');
+_idz.addEventListener('click', (e) => {
+  if (e.target.id === 'import-file-clear') return;
+  document.getElementById('import-file-input').click();
+});
+document.getElementById('import-file-input').addEventListener('change', function() {
+  if (this.files[0]) _setImportFile(this.files[0]);
+});
+document.getElementById('import-file-clear').addEventListener('click', (e) => {
+  e.stopPropagation();
+  _clearImportFile();
+});
+// Drag and drop
+_idz.addEventListener('dragover',  (e) => { e.preventDefault(); _idz.classList.add('drag-over'); });
+_idz.addEventListener('dragleave', ()  => { _idz.classList.remove('drag-over'); });
+_idz.addEventListener('drop', (e) => {
+  e.preventDefault();
+  _idz.classList.remove('drag-over');
+  if (e.dataTransfer.files[0]) _setImportFile(e.dataTransfer.files[0]);
+});
+
+document.getElementById('btn-import').addEventListener('click', async () => {
+  if (!_importData || _importData.length === 0) {
+    toast('No data to import.', 'error');
+    return;
+  }
+
+  const skipDup  = document.getElementById('import-skip-dup').checked;
+  const ra       = document.getElementById('import-result');
+  const progWrap = document.getElementById('import-progress');
+  const progBar  = document.getElementById('import-progress-bar');
+  const progText = document.getElementById('import-progress-text');
+  const btn      = document.getElementById('btn-import');
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="loading"></span> Importing…';
+  progWrap.style.display = '';
+  ra.classList.add('visible');
+  ra.classList.remove('error');
+  ra.innerHTML = '';
+
+  let ok = 0, skipped = 0, errors = 0;
+  const total    = _importData.length;
+  const seenContent = new Set();
+
+  // Pre-fetch existing content for dedup (best effort)
+  if (skipDup) {
+    try {
+      const existing = await GET('/memories?limit=9999');
+      (Array.isArray(existing) ? existing : []).forEach(m => {
+        if (m.content) seenContent.add(m.content.trim());
+      });
+    } catch (_) { /* skip dedup pre-fetch if fails */ }
+  }
+
+  for (let i = 0; i < total; i++) {
+    const m = _importData[i];
+
+    // Update progress bar
+    const pct = Math.round(((i+1) / total) * 100);
+    progBar.style.width = pct + '%';
+    progText.textContent = `${i+1} / ${total}`;
+
+    // Skip duplicate by content
+    if (skipDup && m.content && seenContent.has(m.content.trim())) {
+      skipped++;
+      continue;
+    }
+
+    try {
+      await POST('/memories', {
+        concept    : m.concept    || 'Imported',
+        feeling    : m.feeling    || 'neutro',
+        content    : m.content    || '',
+        media_type : m.media_type || 'text',
+        note       : m.note       || '',
+        tags       : Array.isArray(m.tags) ? m.tags : [],
+      });
+      if (m.content) seenContent.add(m.content.trim());
+      ok++;
+    } catch (err) {
+      errors++;
+    }
+  }
+
+  progWrap.style.display = 'none';
+  progBar.style.width    = '0%';
+
+  const summary = `✦ Import complete — ${ok} imported, ${skipped} skipped (dup), ${errors} errors`;
+  ra.innerHTML  = `<div class="response-label">${summary}</div>`;
+  if (errors > 0) ra.classList.add('error');
+
+  toast(`Imported ${ok} memories (${skipped} skipped, ${errors} errors)`, errors ? 'error' : 'success');
+  btn.disabled  = false;
+  btn.innerHTML = 'Import memories';
+  checkConnection();
+});
+
+/* ═══════════════════════════════════════════════════════════
    BRAIN — LLM helpers
    ═══════════════════════════════════════════════════════════ */
 
@@ -965,26 +1318,48 @@ function disableBtn(id, label) {
 /* ── PERCEIVE ──────────────────────────────────────────────── */
 
 document.getElementById('btn-perceive').addEventListener('click', async () => {
-  const raw     = document.getElementById('perceive-input').value.trim();
-  const concept = document.getElementById('perceive-concept').value.trim();
-  const feeling = document.getElementById('perceive-feeling').value;
-  const note    = document.getElementById('perceive-note').value.trim();
+  const raw        = document.getElementById('perceive-input').value.trim();
+  const concept    = document.getElementById('perceive-concept').value.trim();
+  const feeling    = document.getElementById('perceive-feeling').value;
+  const note       = document.getElementById('perceive-note').value.trim();
   if (!raw) { toast(ui('toastEnterInput'), 'info'); return; }
+
+  // Raccoglie media dal form New Memory se presente (media_type != text)
+  // Il Perceive Brain usa lo stesso media selezionato nella form
+  const mediaType = document.getElementById('new-mediatype')?.value || 'text';
+  const mediaData = mediaType !== 'text'
+    ? (document.getElementById('new-content-file-data')?.value || null)
+    : null;
+  // Ricava il MIME dal data URL (data:<mime>;base64,...)
+  let mediaMime = null;
+  if (mediaData && mediaData.startsWith('data:')) {
+    try { mediaMime = mediaData.split(':')[1].split(';')[0]; } catch (_) {}
+  }
 
   const restore = disableBtn('btn-perceive', 'Perceiving');
   brainLoading('perceive-result', ui('loadPerceiving'));
   const t0 = performance.now();
 
   try {
-    const r = await POST('/brain/perceive', {
-      raw_input: raw,
-      concept:   concept || null,
-      feeling:   feeling || null,
+    const body = {
+      raw_input  : raw,
+      concept    : concept || null,
+      feeling    : feeling || null,
       note,
-    });
+      media_type : mediaType,
+      media_data : mediaData || null,
+      media_mime : mediaMime || null,
+    };
+
+    const r = await POST('/brain/perceive', body);
     const ms   = Math.round(performance.now() - t0);
     const tags = (r.extracted_tags || [])
       .map(t => `<span class="perceive-chip tag">${esc(t)}</span>`).join('');
+
+    // Badge media type se non testuale
+    const mediaBadge = mediaType !== 'text'
+      ? `<span class="perceive-chip media-type">${mediaType.toUpperCase()}</span>`
+      : '';
 
     const el = brainPanel('perceive-result');
     el.innerHTML = `
@@ -996,6 +1371,7 @@ document.getElementById('btn-perceive').addEventListener('click', async () => {
         <div class="perceive-extracted">
           <span class="perceive-chip concept">◈ ${esc(r.extracted_concept)}</span>
           <span class="perceive-chip feeling">${esc(r.extracted_feeling)}</span>
+          ${mediaBadge}
           ${tags}
         </div>
         <div class="perceive-enriched md-content">${renderMarkdown(r.enriched_content)}</div>

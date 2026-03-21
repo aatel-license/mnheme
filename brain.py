@@ -149,12 +149,15 @@ class Brain:
 
     def perceive(
         self,
-        raw_input : str,
+        raw_input  : str,
         *,
-        concept   : Optional[str] = None,
-        feeling   : Optional[str] = None,
-        tags      : Optional[list[str]] = None,
-        note      : str = "",
+        concept    : Optional[str]       = None,
+        feeling    : Optional[str]       = None,
+        tags       : Optional[list[str]] = None,
+        note       : str                 = "",
+        media_type : str                 = "text",
+        media_data : Optional[str]       = None,
+        media_mime : Optional[str]       = None,
     ) -> PerceptionResult:
         """
         Il cervello percepisce un input grezzo e lo trasforma in un ricordo strutturato.
@@ -162,12 +165,31 @@ class Brain:
         L'LLM estrae: concept, feeling, tags, e arricchisce il testo.
         Tutti i campi sono sovrascrivibili manualmente.
 
+        Per input multimediali (image/audio/video/doc), usa complete_vision()
+        se il provider lo supporta, e include il media come content block
+        invece di serializzare il base64 nel prompt testuale.
+
+        Parametri
+        ---------
+        raw_input  : testo descrittivo o titolo del ricordo
+        concept    : sovrascrive il concept estratto dall'LLM
+        feeling    : sovrascrive il feeling estratto dall'LLM
+        tags       : sovrascrive i tag estratti dall'LLM
+        note       : nota manuale allegata al ricordo
+        media_type : "text" | "image" | "video" | "audio" | "doc"
+        media_data : base64 puro del file (senza prefisso data:...)
+                     oppure data URL completo (data:mime;base64,...)
+        media_mime : MIME type es. "image/jpeg" (obbligatorio se media_data presente)
+
         Esempio
         -------
         >>> r = brain.perceive("Ho aperto una busta dalla banca. Le mani tremavano.")
-        >>> r.extracted_concept   # "Debito"
-        >>> r.extracted_feeling   # "paura"
-        >>> r.memory.memory_id    # UUID del ricordo salvato
+        >>> r = brain.perceive(
+        ...     "Foto del contratto firmato",
+        ...     media_type = "image",
+        ...     media_data = "<base64>",
+        ...     media_mime = "image/jpeg",
+        ... )
         """
         valid_feelings     = [f.value for f in Feeling]
         valid_feelings_str = ", ".join(valid_feelings)
@@ -184,8 +206,47 @@ class Brain:
             f"Rispondi SOLO con il JSON, nessun altro testo."
         )
 
-        raw_json = self._llm.complete(self._system, prompt)
-        parsed   = _parse_json(raw_json)
+        # Determina se usare vision o testo puro
+        is_media = media_type != "text" and media_data
+
+        if is_media:
+            # Estrai base64 puro se arriva come data URL
+            b64 = media_data
+            mime = media_mime or "application/octet-stream"
+            if isinstance(b64, str) and b64.startswith("data:"):
+                # formato: data:<mime>;base64,<b64>
+                try:
+                    header, b64 = b64.split(",", 1)
+                    if not mime or mime == "application/octet-stream":
+                        mime = header.split(":")[1].split(";")[0]
+                except ValueError:
+                    pass
+
+            size_kb = round(len(b64) * 3 / 4 / 1024)  # stima dimensione file reale
+
+            media_items = [{
+                "type":       media_type,
+                "data":       b64,
+                "media_type": mime,
+                "size_kb":    size_kb,
+            }]
+
+            # Arricchisci il prompt con contesto sul tipo di media
+            vision_prompt = (
+                f"Hai ricevuto un file {media_type.upper()} allegato.\n"
+                f"Descrivi brevemente cosa vedi/senti, poi rispondi con il JSON richiesto.\n\n"
+                + prompt
+            )
+
+            raw_json = self._llm.complete_vision(
+                self._system,
+                vision_prompt,
+                media_items,
+            )
+        else:
+            raw_json = self._llm.complete(self._system, prompt)
+
+        parsed = _parse_json(raw_json)
 
         ext_concept = concept or parsed.get("concept", "Generale")
         ext_feeling = feeling or parsed.get("feeling", "nostalgia")
@@ -195,12 +256,26 @@ class Brain:
         if ext_feeling not in valid_feelings:
             ext_feeling = _closest_feeling(ext_feeling, valid_feelings)
 
+        # Il campo content nel DB salva:
+        # - per text: il testo arricchito
+        # - per media: il data URL completo (per poter recuperare il file)
+        if is_media and media_data:
+            # Ricostruisci data URL se era solo base64
+            mime = media_mime or "application/octet-stream"
+            if media_data.startswith("data:"):
+                db_content = media_data
+            else:
+                db_content = f"data:{mime};base64,{media_data}"
+        else:
+            db_content = enriched
+
         memory = self._db.remember(
-            concept = ext_concept,
-            feeling = ext_feeling,
-            content = enriched,
-            note    = note or f"Input originale: {raw_input[:200]}",
-            tags    = ext_tags,
+            concept    = ext_concept,
+            feeling    = ext_feeling,
+            content    = db_content,
+            media_type = media_type,
+            note       = note or f"Input originale: {raw_input[:200]}",
+            tags       = ext_tags,
         )
 
         return PerceptionResult(
@@ -475,9 +550,20 @@ def _memories_to_context(memories: list[Memory]) -> str:
     lines = []
     for i, m in enumerate(memories, 1):
         ts = m.timestamp[:10]
+
+        # Per media non-testuali, NON includiamo il contenuto base64 raw
+        # nel contesto LLM — esploderebbe il context window.
+        # Includiamo invece una descrizione compatta del media.
+        media_type = getattr(m, "media_type", "text") or "text"
+        if media_type != "text":
+            content_display = f"[{media_type.upper()} — {len(m.content)} bytes b64]"
+        else:
+            # Testo: tronchiamo a 500 chars per non sprecare token
+            content_display = m.content[:500] + ("…" if len(m.content) > 500 else "")
+
         lines.append(
             f"[{i}] {ts} | Concetto: {m.concept} | Sentimento: {m.feeling}\n"
-            f"    Contenuto: {m.content}\n"
+            f"    Contenuto: {content_display}\n"
             f"    Note: {m.note or '—'}  |  Tag: {', '.join(m.tags) or '—'}"
         )
     return "\n\n".join(lines)
