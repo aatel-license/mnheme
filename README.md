@@ -375,6 +375,26 @@ python test_local_provider.py --db mente.mnheme
 
 # Output verbose con traceback se qualcosa va male
 python test_local_provider.py --verbose
+---
+
+# Advanced human simulator
+
+## Arco temporale reale
+- I timestamp non sono più "oggi". 
+- Ogni ricordo calcola la data esatta basandosi su birth_date + età_in_giorni ± variazione random di 90 giorni. 
+- Con --birth-year 1975 un ricordo all'età di 8 anni avrà un timestamp intorno al 1983, uno a 35 anni intorno al 2010.
+- 8 fasi della vita con distribuzioni emotive distinte
+- Prima infanzia (0–5), Infanzia (6–11), Adolescenza (12–17), Prima età adulta (18–29), Età adulta (30–44), Mezza età (45–59), Tarda età adulta (60–79), Vecchiaia (80–130). 
+- Ogni fase ha pesi calibrati su dati psicologici reali: l'adolescenza pesa imbarazzo/vergogna/amore, la vecchiaia pesa gratitudine/serenità/nostalgia (positivity effect di Carstensen).
+## Reminiscence bump
+- La distribuzione temporale dei ricordi non è uniforme: il 30% cade nella fascia 15–35 anni, rispecchiando il fenomeno psicologico per cui gli adulti ricordano sproporzionatamente gli eventi di quella fascia.
+## Coscienza narrativa (Consciousness)
+- Mantiene concept usati, tag ricorrenti e lista di ricordi "rielaborabili". Il filo narrativo viene iniettato nel prompt: se in una vita ricorrono tag come lavoro, padre, Milano, il modello sa che possono tornare nei ricordi successivi, creando coerenza biografica.
+## Rielaborazioni (~20%)
+- I ricordi con feeling pesanti (ansia, paura, rabbia, vergogna) vengono messi in una coda reworkable. Con ~20% di probabilità un nuovo slot viene marcato come rielaborazione: stesso concept, feeling cambiato, scrittura in ottica di crescita/guarigione. Il prompt dice esplicitamente "stesso evento visto con occhi diversi a X anni".
+Zero bias LLM
+- Il modello non sceglie mai il feeling — lo riceve come vincolo esplicito slot per slot. La distribuzione reale dipende solo dai pesi per fase. Il modello scrive solo il contenuto narrativo coerente con il feeling e l'età assegnati.
+---
 
 ---
 
