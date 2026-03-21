@@ -89,7 +89,7 @@
       <span class="nav-icon">▣</span> <span data-i18n="navStats">Stats</span>
     </button>
     <button class="nav-btn" data-view="export">
-      <span class="nav-icon">↗</span> <span data-i18n="navExport">Export</span>
+      <span class="nav-icon">⇅</span> <span data-i18n="navExport">Export / Import</span>
     </button>
 
     <div class="nav-group-label" data-i18n="navBrain">Brain · LLM</div>
@@ -155,10 +155,37 @@
         </div>
       </div>
 
-      <div class="field">
+      <div class="field" id="field-content-text">
         <label data-i18n-label="labelContent"><span data-i18n="labelContent">Content</span> <span class="required">*</span></label>
         <textarea id="new-content" rows="4" placeholder="" data-i18n-ph="phContent"></textarea>
         <div class="char-count" id="char-count">0 chars</div>
+      </div>
+
+      <!-- File upload area — shown when media_type != text -->
+      <div class="field" id="field-content-file" style="display:none">
+        <label><span id="file-field-label">File</span> <span class="required">*</span></label>
+        <div class="file-drop-zone" id="file-drop-zone">
+          <input type="file" id="new-file-input" style="display:none">
+          <div class="file-drop-inner" id="file-drop-inner">
+            <span class="file-drop-icon" id="file-drop-icon">⬆</span>
+            <span class="file-drop-text" id="file-drop-text">Drop file here or click to browse</span>
+            <span class="file-drop-hint" id="file-drop-hint"></span>
+          </div>
+          <div class="file-selected" id="file-selected" style="display:none">
+            <span class="file-selected-name" id="file-selected-name"></span>
+            <span class="file-selected-size" id="file-selected-size"></span>
+            <button class="file-clear-btn" id="file-clear-btn" title="Remove file">✕</button>
+          </div>
+        </div>
+        <div class="file-preview-wrap" id="file-preview-wrap" style="display:none">
+          <img id="file-preview-img" style="display:none" alt="preview">
+          <video id="file-preview-video" style="display:none" controls></video>
+          <audio id="file-preview-audio" style="display:none" controls></audio>
+          <div id="file-preview-doc" style="display:none" class="file-doc-placeholder"></div>
+        </div>
+        <!-- hidden textarea keeps content for API submission (base64 or URL) -->
+        <input type="hidden" id="new-content-file-data">
+        <div class="char-count" id="file-char-count"></div>
       </div>
 
       <div class="form-row">
@@ -332,10 +359,12 @@
   <!-- ── EXPORT ── -->
   <section class="view" id="view-export">
     <div class="view-header">
-      <h1 data-i18n="titleExport">Export</h1>
-      <p class="view-desc" data-i18n="descExport">Export memories as JSON with optional filters.</p>
+      <h1 data-i18n="titleExport">Export / Import</h1>
+      <p class="view-desc" data-i18n="descExport">Export memories as JSON with optional filters, or import a previously exported file.</p>
     </div>
 
+    <!-- EXPORT -->
+    <div class="io-section-label" data-i18n="labelExportSection">EXPORT</div>
     <div class="form-card">
       <div class="form-row">
         <div class="field">
@@ -361,6 +390,48 @@
     </div>
 
     <div class="response-area" id="export-result"></div>
+
+    <!-- IMPORT -->
+    <div class="io-section-label" style="margin-top:28px" data-i18n="labelImportSection">IMPORT</div>
+    <div class="form-card">
+      <div class="field">
+        <label data-i18n="labelImportDesc">Select a JSON file exported from MNHEME to import memories into the current database.</label>
+      </div>
+      <div class="file-drop-zone" id="import-drop-zone">
+        <input type="file" id="import-file-input" accept=".json,application/json" style="display:none">
+        <div class="file-drop-inner" id="import-drop-inner">
+          <span class="file-drop-icon">↓</span>
+          <span class="file-drop-text" data-i18n="importDropText">Drop JSON file here or click to browse</span>
+          <span class="file-drop-hint" data-i18n="importDropHint">.json — previously exported MNHEME backup</span>
+        </div>
+        <div class="file-selected" id="import-file-selected" style="display:none">
+          <span class="file-selected-name" id="import-file-name"></span>
+          <span class="file-selected-size" id="import-file-size"></span>
+          <button class="file-clear-btn" id="import-file-clear" title="Remove">✕</button>
+        </div>
+      </div>
+
+      <div id="import-preview" style="display:none" class="import-preview-box">
+        <div class="import-preview-meta" id="import-preview-meta"></div>
+      </div>
+
+      <div class="form-actions" style="margin-top:16px">
+        <button class="btn-primary" id="btn-import" disabled data-i18n="btnImport">Import memories</button>
+        <label class="toggle-label" style="margin-left:12px">
+          <input type="checkbox" id="import-skip-dup" checked>
+          <span data-i18n="labelSkipDup">Skip duplicates (same content)</span>
+        </label>
+      </div>
+
+      <div class="import-progress" id="import-progress" style="display:none">
+        <div class="import-progress-bar-wrap">
+          <div class="import-progress-bar" id="import-progress-bar"></div>
+        </div>
+        <span class="import-progress-text" id="import-progress-text">0 / 0</span>
+      </div>
+    </div>
+
+    <div class="response-area" id="import-result"></div>
   </section>
 
   <!-- ── BRAIN STATUS BAR (shared across brain views) ── -->

@@ -170,11 +170,19 @@ def export(
 # ── Schemi Brain ─────────────────────────────────
 
 class PerceiveIn(BaseModel):
-    raw_input : str            = Field(...,   example="Ho aperto la busta dalla banca. Le mani tremavano.")
-    concept   : Optional[str] = Field(None,  example="Debito")
-    feeling   : Optional[str] = Field(None,  example="paura")
-    tags      : List[str]     = Field(default_factory=list)
-    note      : str           = Field("",    example="Appunto manuale")
+    raw_input  : str            = Field(...,   example="Ho aperto la busta dalla banca. Le mani tremavano.")
+    concept    : Optional[str] = Field(None,  example="Debito")
+    feeling    : Optional[str] = Field(None,  example="paura")
+    tags       : List[str]     = Field(default_factory=list)
+    note       : str           = Field("",    example="Appunto manuale")
+    # Campi vision/media — opzionali
+    media_type : str           = Field("text", example="image",
+                                       description="text | image | video | audio | doc")
+    media_data : Optional[str] = Field(None,
+                                       description="Data URL completo (data:mime;base64,...) "
+                                                   "oppure base64 puro del file allegato")
+    media_mime : Optional[str] = Field(None,  example="image/jpeg",
+                                       description="MIME type del file (obbligatorio se media_data presente)")
 
 class PerceiveOut(BaseModel):
     memory_id         : str
@@ -246,16 +254,20 @@ def brain_status():
 
 
 @app.post("/brain/perceive", response_model=PerceiveOut, status_code=201,
-          summary="Percepisci un input grezzo — LLM estrae concept, feeling, tags e arricchisce")
+          summary="Percepisci un input grezzo — LLM estrae concept, feeling, tags e arricchisce. "
+                  "Supporta media vision: invia media_data (data URL base64) e media_mime per image/doc.")
 def brain_perceive(body: PerceiveIn):
     b = get_brain()
     try:
         r = b.perceive(
             body.raw_input,
-            concept = body.concept or None,
-            feeling = body.feeling or None,
-            tags    = body.tags or None,
-            note    = body.note,
+            concept    = body.concept    or None,
+            feeling    = body.feeling    or None,
+            tags       = body.tags       or None,
+            note       = body.note,
+            media_type = body.media_type or "text",
+            media_data = body.media_data or None,
+            media_mime = body.media_mime or None,
         )
         return PerceiveOut(
             memory_id         = r.memory.memory_id,
