@@ -1,5 +1,6 @@
 # MNHEME — Human Memory Database
 ![Alt text](https://github.com/aatel-license/mnheme/blob/main/imgs/mnheme_dark.png "mnheme")
+
 # USE IT AT YOU OWN RISK
 > *"La memoria non si sovrascrive. Si stratifica."*
 
@@ -382,7 +383,12 @@ python test_local_provider.py --verbose
 AATEL — vedi [LICENSE](LICENSE)
 
 ---
+---
 
+## Thsnks
+A special thanks to @KnightNiwrem https://github.com/knightniwrem
+whose questions led to discovering a critical bug triggered by a crash during the write phase.
+---
 <p align="center">
   <sub>MNHEME — dalla musa greca della memoria</sub><br>
   <sub><em>"Non puoi sovrascrivere ciò che hai vissuto. Puoi solo ricordarlo diversamente."</em></sub>
