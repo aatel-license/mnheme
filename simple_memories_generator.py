@@ -236,34 +236,84 @@ class MnhemeClient:
 # GENERATOR
 # ────────────────────────────────────────────────────────────
 
-_SYSTEM_PROMPT = (
-    "Sei un generatore di ricordi personali umani e realistici. "
-    "Rispondi SEMPRE e SOLO con JSON valido, nessun testo extra, "
-    "nessun markdown, nessun backtick."
-)
+# ── Distribuzione target dei feeling ────────────────────────
+# Rispecchia la distribuzione emotiva umana realistica:
+# ~40% positivi, ~35% negativi, ~25% neutri/ambivalenti
+_FEELING_WEIGHTS: dict[str, float] = {
+    # Positivi
+    "gioia"        : 1.6,
+    "amore"        : 1.5,
+    "serenità"     : 1.4,
+    "gratitudine"  : 1.3,
+    "orgoglio"     : 1.2,
+    "speranza"     : 1.2,
+    "eccitazione"  : 1.1,
+    "sollievo"     : 1.1,
+    "stupore"      : 1.0,
+    "curiosità"    : 1.0,
+    "sorpresa"     : 0.9,
+    # Neutri / ambivalenti
+    "nostalgia"    : 1.1,
+    "malinconia"   : 0.9,
+    "rassegnazione": 0.8,
+    "confusione"   : 0.8,
+    "noia"         : 0.7,
+    # Negativi (tenuti sotto controllo)
+    "tristezza"    : 0.8,
+    "ansia"        : 0.6,
+    "paura"        : 0.6,
+    "solitudine"   : 0.6,
+    "delusione"    : 0.6,
+    "rabbia"       : 0.5,
+    "vergogna"     : 0.5,
+    "imbarazzo"    : 0.5,
+    "invidia"      : 0.4,
+    "senso_di_colpa": 0.4,
+}
 
-_DOMAINS = [
-    "lavoro", "famiglia", "amicizia", "amore", "salute", "corpo",
-    "denaro", "casa", "scuola", "tempo libero", "solitudine", "viaggi",
-    "perdita", "crescita", "errori", "soddisfazioni", "paure", "sogni",
-    "conflitti", "riconciliazioni", "routine", "cambiamenti",
-]
+def _pick_feelings_for_batch(n: int, used_feelings: list[str]) -> list[str]:
+    """
+    Sceglie n feeling per un batch rispettando la distribuzione target.
+    I feeling già molto usati vengono penalizzati ulteriormente.
+    """
+    # Conta quante volte ogni feeling è già stato usato
+    usage: dict[str, int] = {}
+    for f in used_feelings:
+        usage[f] = usage.get(f, 0) + 1
+    max_used = max(usage.values(), default=1)
+
+    # Peso finale = peso base / (1 + volte usato normalizzato)
+    weights = []
+    for f in VALID_FEELINGS:
+        base   = _FEELING_WEIGHTS.get(f, 0.7)
+        used_n = usage.get(f, 0)
+        penalty = 1 + (used_n / max(max_used, 1)) * 2
+        weights.append(base / penalty)
+
+    # Campiona n feeling con rimpiazzo (permette ripetizioni solo se necessario)
+    chosen = random.choices(VALID_FEELINGS, weights=weights, k=n)
+    return chosen
 
 
 def _build_prompt(
-    n                : int,
-    used_concepts    : list[str],
-    used_feelings    : list[str],
-    used_contents_prefix: list[str],
+    n                    : int,
+    used_concepts        : list[str],
+    used_contents_prefix : list[str],
+    target_feelings      : list[str],
 ) -> str:
-    """Costruisce il prompt per generare n ricordi diversi."""
+    """Costruisce il prompt per generare n ricordi con feeling pre-assegnati."""
     domains_sample = random.sample(_DOMAINS, min(6, len(_DOMAINS)))
     seed = random.randint(0, 99_999_999)
 
     avoid_concepts = json.dumps(used_concepts[-40:], ensure_ascii=False)
-    avoid_feelings = json.dumps(used_feelings[-10:], ensure_ascii=False)
     avoid_prefixes = json.dumps(
         [c[:30] for c in used_contents_prefix[-20:]], ensure_ascii=False
+    )
+
+    # Costruisce le assegnazioni feeling→slot esplicite
+    assignments = "\n".join(
+        f"  Ricordo {i+1}: feeling = \"{f}\""
+        for i, f in enumerate(target_feelings)
     )
 
     return textwrap.dedent(f"""
@@ -272,17 +322,17 @@ def _build_prompt(
 
         Genera esattamente {n} ricordi personali COMPLETAMENTE DISTINTI.
 
+        ASSEGNAZIONE FEELING OBBLIGATORIA — usa ESATTAMENTE questi valori nell'ordine:
+{assignments}
+
         REGOLE CONCEPT:
         - Una sola parola (sostantivo singolo, minuscolo, senza articoli)
-        - Esempi buoni: "mutuo", "licenziamento", "tradimento", "dentista"
+        - Esempi buoni: "mutuo", "promozione", "tradimento", "vacanza", "dentista"
         - NON ripetere: {avoid_concepts}
-
-        REGOLE FEELING:
-        - Valore ESATTO tra: {json.dumps(VALID_FEELINGS, ensure_ascii=False)}
-        - Evita se possibile: {avoid_feelings}
 
         REGOLE CONTENT:
         - Prima persona, specifico e concreto (1-3 righe, max 200 caratteri)
+        - Il tono DEVE essere coerente con il feeling assegnato
         - Evita inizi troppo simili a: {avoid_prefixes}
         - Niente cliché ("mi sono reso conto", "ho capito che", "oggi ho scoperto")
 
@@ -298,7 +348,7 @@ def _build_prompt(
         [
           {{
             "concept": "parolasingola",
-            "feeling": "uno_dei_valori_validi",
+            "feeling": "esattamente_come_assegnato",
             "content": "...",
             "note": "...",
             "tags": ["tag1", "tag2"]
@@ -399,27 +449,29 @@ def _validate_record(item: dict) -> MemoryRecord | None:
 # ────────────────────────────────────────────────────────────
 
 def _generate_batch(
-    llm          : LLMClient,
-    api          : MnhemeClient,
-    batch_size   : int,
-    batch_id     : int,
-    used_concepts: list[str],
-    used_feelings: list[str],
-    used_contents: list[str],
-    dry_run      : bool,
-    verbose      : bool,
-    max_retries  : int = 3,
+    llm            : LLMClient,
+    api            : MnhemeClient,
+    batch_size     : int,
+    batch_id       : int,
+    used_concepts  : list[str],
+    used_feelings  : list[str],
+    used_contents  : list[str],
+    target_feelings: list[str],
+    dry_run        : bool,
+    verbose        : bool,
+    max_retries    : int = 3,
 ) -> list[tuple[MemoryRecord, str | None]]:
     """
     Genera un batch di ricordi e li posta sull'API.
-    Ritorna lista di (MemoryRecord, memory_id | None).
+    target_feelings: lista di feeling pre-assegnati per questo batch
+    (uno per slot) — garantisce la distribuzione target globale.
     """
     results: list[tuple[MemoryRecord, str | None]] = []
 
     for attempt in range(1, max_retries + 1):
         try:
             prompt = _build_prompt(
-                batch_size, used_concepts, used_feelings, used_contents
+                batch_size, used_concepts, used_contents, target_feelings
             )
             raw = llm.complete(
                 _SYSTEM_PROMPT, prompt,
@@ -437,13 +489,18 @@ def _generate_batch(
             time.sleep(wait)
 
     validated: list[MemoryRecord] = []
-    for item in raw_list:
+    for i, item in enumerate(raw_list):
         record = _validate_record(item)
         if record is None:
             if verbose:
                 print(f"  {_c(DIM,'·')} record scartato: {json.dumps(item, ensure_ascii=False)[:80]}")
             continue
-        # Dedup locale: salta se il concept è già in questo batch
+        # Se il modello ha ignorato il feeling assegnato, forzalo
+        if i < len(target_feelings) and record.feeling != target_feelings[i]:
+            if verbose:
+                print(f"  {_c(DIM,'·')} feeling corretto: {record.feeling} → {target_feelings[i]}")
+            record.feeling = target_feelings[i]
+        # Dedup locale
         if record.concept in [r.concept for r in validated]:
             if verbose:
                 print(f"  {_c(DIM,'·')} concept duplicato in batch: {record.concept}")
@@ -546,9 +603,18 @@ def main() -> None:
     print(f"\n  {_c(DIM,f'Generando {args.n} ricordi in {n_batches} batch da {bs} · {args.workers} worker paralleli')}")
     print("─" * 55)
 
+    # ── Pre-calcola distribuzione feeling per TUTTI i batch ─
+    # Genera l'assegnazione feeling globale una volta sola, poi
+    # la spezza per batch. Questo garantisce la distribuzione
+    # target rispettata sull'intera sessione, non solo per batch.
+    all_target_feelings = _pick_feelings_for_batch(args.n, used_feelings=[])
+    batch_target_feelings: list[list[str]] = []
+    pos = 0
+    for size in batch_sizes:
+        batch_target_feelings.append(all_target_feelings[pos:pos + size])
+        pos += size
+
     # ── Stato condiviso per evitare duplicati cross-batch ───
-    # (lock-free: i batch paralleli leggono lo snapshot iniziale;
-    #  aggiorniamo la lista globale dopo ogni batch completato)
     all_results: list[tuple[MemoryRecord, str | None]] = []
     used_concepts: list[str] = []
     used_feelings: list[str] = []
@@ -558,11 +624,12 @@ def main() -> None:
 
     if args.sequential or n_batches == 1:
         # ── Modalità sequenziale ─────────────────────────────
-        for i, size in enumerate(batch_sizes, 1):
-            print(f"\n  {_c(DIM, f'Batch {i}/{n_batches} ({size} ricordi)')}") 
+        for i, (size, tgt_feelings) in enumerate(zip(batch_sizes, batch_target_feelings), 1):
+            print(f"\n  {_c(DIM, f'Batch {i}/{n_batches} ({size} ricordi · {tgt_feelings})')}")
             batch_res = _generate_batch(
                 llm, api, size, i,
                 list(used_concepts), list(used_feelings), list(used_contents),
+                tgt_feelings,
                 args.dry_run, args.verbose,
             )
             for rec, mid in batch_res:
@@ -572,10 +639,7 @@ def main() -> None:
             all_results.extend(batch_res)
     else:
         # ── Modalità parallela ───────────────────────────────
-        # I batch girano in parallelo con lo snapshot di used_* al momento del lancio.
-        # Questo può produrre qualche duplicato tra batch diversi — accettabile per performance.
         snapshot_concepts = list(used_concepts)
-        snapshot_feelings = list(used_feelings)
         snapshot_contents = list(used_contents)
 
         with ThreadPoolExecutor(max_workers=min(args.workers, n_batches)) as pool:
@@ -584,11 +648,14 @@ def main() -> None:
                     _generate_batch,
                     llm, api, size, i,
                     snapshot_concepts + [r.concept for r, _ in all_results],
-                    snapshot_feelings + [r.feeling for r, _ in all_results],
+                    [],   # feeling già gestiti dai target pre-assegnati
                     snapshot_contents + [r.content for r, _ in all_results],
+                    tgt_feelings,
                     args.dry_run, args.verbose,
                 ): i
-                for i, size in enumerate(batch_sizes, 1)
+                for i, (size, tgt_feelings) in enumerate(
+                    zip(batch_sizes, batch_target_feelings), 1
+                )
             }
             for future in as_completed(futures):
                 batch_id = futures[future]
