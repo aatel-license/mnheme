@@ -1,169 +1,630 @@
+"""
+generate_memories.py
+====================
+Generatore di ricordi sintetici per MNHEME.
+
+Usa un modello LLM locale (LM Studio / Ollama / qualsiasi endpoint
+OpenAI-compatibile) per produrre ricordi realistici e li posta
+direttamente sulla REST API di MNHEME.
+
+Utilizzo
+--------
+    # Genera 20 ricordi con il modello auto-rilevato
+    python generate_memories.py --n 20
+
+    # Specifica server LLM e API MNHEME
+    python generate_memories.py --n 50 --llm-url http://localhost:1234 --api-url http://localhost:8000
+
+    # Fissa il modello (utile se il server ne ha più di uno caricato)
+    python generate_memories.py --n 30 --model my-model-name
+
+    # Dry-run: genera senza postare
+    python generate_memories.py --n 10 --dry-run
+
+    # Stampa output dettagliato
+    python generate_memories.py --n 10 --verbose
+
+Dipendenze
+----------
+    pip install openai requests
+"""
+
+from __future__ import annotations
+
 import argparse
 import json
 import random
-from dataclasses import dataclass, asdict
-from typing import List, Optional
-from openai import OpenAI
-import requests
+import sys
+import time
+import textwrap
+import urllib.request
+import urllib.error
+from dataclasses import dataclass, field, asdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from mnheme import Feeling
+from typing import List, Optional
 
-# -------- CLI --------
-parser = argparse.ArgumentParser()
-parser.add_argument("--n", type=int, default=10)
-args = parser.parse_args()
+# ── Import Feeling dal progetto ──────────────────────────────
+try:
+    from mnheme import Feeling
+    VALID_FEELINGS: list[str] = [f.value for f in Feeling]
+except ImportError:
+    # Fallback se mnheme non è nel path — lista hardcoded
+    VALID_FEELINGS = [
+        "ansia", "paura", "sollievo", "tristezza", "gioia", "rabbia",
+        "vergogna", "senso_di_colpa", "nostalgia", "speranza", "orgoglio",
+        "delusione", "solitudine", "confusione", "gratitudine", "invidia",
+        "imbarazzo", "eccitazione", "rassegnazione", "stupore", "amore",
+        "malinconia", "serenità", "sorpresa", "noia", "curiosità",
+    ]
+
+# ── ANSI colors ──────────────────────────────────────────────
+GRN  = "\033[32m"
+RED  = "\033[31m"
+YLW  = "\033[33m"
+CYN  = "\033[36m"
+DIM  = "\033[2m"
+BOLD = "\033[1m"
+NC   = "\033[0m"
+
+def _c(color: str, text: str) -> str:
+    return f"{color}{text}{NC}"
 
 
-# -------- MODEL --------
+# ────────────────────────────────────────────────────────────
+# DATA MODEL
+# ────────────────────────────────────────────────────────────
+
 @dataclass
-class Memory:
-    concept: str
-    feeling: Feeling
-    content: str
-    media_type: str = "text"
-    note: str = ""
-    tags: List[str] = None
+class MemoryRecord:
+    concept    : str
+    feeling    : str
+    content    : str
+    media_type : str       = "text"
+    note       : str       = ""
+    tags       : List[str] = field(default_factory=list)
+
+    def to_payload(self) -> dict:
+        """Serializza nel formato atteso dall'API MNHEME."""
+        return {
+            "concept":    self.concept,
+            "feeling":    self.feeling,
+            "content":    self.content,
+            "media_type": self.media_type,
+            "note":       self.note,
+            "tags":       self.tags or [],
+        }
 
 
-# -------- LLM --------
-class LLMGenerator:
-    VALID_FEELINGS = [f.value for f in Feeling]
+# ────────────────────────────────────────────────────────────
+# LLM CLIENT — chiama il modello locale
+# ────────────────────────────────────────────────────────────
 
-    def __init__(self):
-        self.client = OpenAI(
-            base_url="http://localhost:1234/v1",
-            api_key="",
-        )
-        self.model = ""
-        self.API_URL = "http://localhost:8000/memories"
+class LLMClient:
+    """
+    Client minimale per endpoint OpenAI-compatibili.
+    Non dipende dall'SDK openai — usa solo urllib (stdlib).
+    Compatibile con LM Studio, Ollama, llama.cpp, vLLM, ecc.
+    """
 
-    def post_memory(self, memory: Memory) -> Optional[str]:
-        """Posta il ricordo e restituisce l'id assegnato dal server."""
-        payload = asdict(memory)
-        payload["feeling"] = memory.feeling.value
-        response = requests.post(
-            self.API_URL,
-            headers={"Content-Type": "application/json", "accept": "application/json"},
-            json=payload,
-            verify=False,
-        )
-        response.raise_for_status()
-        data = response.json()
-        # cerca l'id in campi comuni — adatta se la tua API usa un nome diverso
-        return data.get("id") or data.get("_id") or data.get("memory_id")
+    def __init__(self, base_url: str, model: str, api_key: str = "") -> None:
+        self.base_url   = base_url.rstrip("/")
+        self.model      = model
+        self.api_key    = api_key
+        self._chat_url  = f"{self.base_url}/v1/chat/completions"
+        self._models_url= f"{self.base_url}/v1/models"
 
-    def generate_all(self, n: int, already_generated: List[Memory]) -> List[Memory]:
-        """Chiede all'LLM di generare n ricordi completamente diversi."""
-        existing_concepts = [m.concept for m in already_generated]
-        existing_feelings = [m.feeling.value for m in already_generated]
+    # ── Auto-discovery del modello ────────────────────────
 
-        seed = random.randint(0, 10_000_000)
-        prompt = f"""
-Sei un generatore di ricordi personali umani e realistici.
-SEED: {seed}
-
-COMPITO:
-Genera esattamente {n} ricordi personali completamente distinti tra loro.
-
-REQUISITI SUL CONCEPT:
-- Il campo "concept" deve essere UNA SOLA PAROLA (sostantivo singolo, es: "mutuo", "licenziamento", "tradimento")
-- NON usare frasi, NON usare aggettivi, NON usare articoli
-- Concetti già usati da non ripetere: {json.dumps(existing_concepts, ensure_ascii=False)}
-
-REQUISITI SUL FEELING:
-- Scegli tra questi valori esatti: {json.dumps(self.VALID_FEELINGS, ensure_ascii=False)}
-- Feeling già usati (evita se possibile): {json.dumps(existing_feelings, ensure_ascii=False)}
-
-REQUISITI GENERALI:
-- Copri ambiti eterogenei: lavoro, famiglia, amicizia, solitudine, corpo, denaro, tempo, ecc.
-- Scrivi il content in prima persona, concreto e specifico (1-2 righe max)
-- Evita cliché e situazioni generiche
-
-OUTPUT: solo JSON valido, nessun testo extra — un array di {n} oggetti:
-[
-  {{
-    "concept": "parolasingola",
-    "feeling": "...",
-    "content": "...",
-    "media_type": "text",
-    "note": "...",
-    "tags": [...]
-  }}
-]
-"""
-        res = self.client.responses.create(
-            model=self.model,
-            input=prompt,
-            temperature=1.2,
-            top_p=0.95,
-        )
-        text = res.output[0].content[0].text
-
+    def discover_model(self) -> str:
+        """
+        Interroga /v1/models e restituisce il primo modello disponibile.
+        Lancia RuntimeError se il server non è raggiungibile.
+        """
         try:
-            raw_list = json.loads(text)
-        except json.JSONDecodeError as e:
-            raise ValueError(f"JSON non valido nella risposta:\n{text}") from e
+            req  = urllib.request.Request(self._models_url)
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                data   = json.loads(resp.read())
+                models = [m.get("id", "") for m in data.get("data", [])]
+                if not models:
+                    raise RuntimeError("Nessun modello trovato su /v1/models")
+                return models[0]
+        except urllib.error.URLError as e:
+            raise RuntimeError(
+                f"Server LLM non raggiungibile a {self.base_url}: {e.reason}\n"
+                "Assicurati che LM Studio (o Ollama) sia avviato."
+            ) from e
 
-        memories = []
-        for item in raw_list:
-            # forza concept a parola singola — prende solo il primo token
-            item["concept"] = item.get("concept", "").split()[0].lower()
+    # ── Completamento testuale ────────────────────────────
 
-            if item.get("feeling") not in self.VALID_FEELINGS:
-                item["feeling"] = random.choice(self.VALID_FEELINGS)
-            item["feeling"] = Feeling(item["feeling"])
-            memories.append(Memory(**item))
+    def complete(
+        self,
+        system     : str,
+        user       : str,
+        temperature: float = 0.9,
+        max_tokens : int   = 2048,
+    ) -> str:
+        """
+        Chiama il modello con il prompt dato e restituisce il testo.
+        Lancia LLMError su errori HTTP o risposta malformata.
+        """
+        payload = json.dumps({
+            "model":       self.model,
+            "temperature": temperature,
+            "max_tokens":  max_tokens,
+            "messages": [
+                {"role": "system", "content": system},
+                {"role": "user",   "content": user},
+            ],
+        }, ensure_ascii=False).encode("utf-8")
 
-        return memories
+        headers = {
+            "Content-Type": "application/json",
+            "User-Agent":   "MNHEME-Generator/2.0",
+        }
+        if self.api_key:
+            headers["Authorization"] = f"Bearer {self.api_key}"
 
-    def _generate_and_post(self, batch_n: int) -> List[tuple[Memory, Optional[str]]]:
-        """Genera un batch e posta ogni ricordo. Restituisce coppie (memory, id)."""
-        batch = self.generate_all(batch_n, already_generated=[])
-        results = []
-        for memory in batch:
-            memory_id = self.post_memory(memory)
-            print(f"   ✓ [{memory.feeling.value}] {memory.concept} → id: {memory_id or '?'}")
-            results.append((memory, memory_id))
-        return results
+        req = urllib.request.Request(
+            self._chat_url, data=payload, headers=headers, method="POST"
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=120) as resp:
+                body = json.loads(resp.read())
+            return body["choices"][0]["message"]["content"]
+        except urllib.error.HTTPError as e:
+            raise RuntimeError(
+                f"LLM HTTP {e.code}: {e.read().decode('utf-8', errors='replace')[:300]}"
+            ) from e
+        except (KeyError, IndexError) as e:
+            raise RuntimeError(f"Risposta LLM malformata: {e}") from e
 
-    def generate(self, n: int) -> List[tuple[Memory, Optional[str]]]:
-        BATCH_SIZE = 5
-        n_batches = (n + BATCH_SIZE - 1) // BATCH_SIZE
-        batch_sizes = [BATCH_SIZE] * n_batches
-        batch_sizes[-1] = n - BATCH_SIZE * (n_batches - 1)
 
-        all_results: List[tuple[Memory, Optional[str]]] = []
+# ────────────────────────────────────────────────────────────
+# MNHEME API CLIENT
+# ────────────────────────────────────────────────────────────
 
-        with ThreadPoolExecutor(max_workers=n_batches) as executor:
+class MnhemeClient:
+    """Posta ricordi sulla REST API MNHEME."""
+
+    def __init__(self, api_url: str) -> None:
+        self.api_url = api_url.rstrip("/")
+        self._mem_url = f"{self.api_url}/memories"
+
+    def ping(self) -> bool:
+        """Verifica che il server MNHEME sia raggiungibile."""
+        try:
+            with urllib.request.urlopen(
+                f"{self.api_url}/stats", timeout=4
+            ):
+                return True
+        except Exception:
+            return False
+
+    def post(self, memory: MemoryRecord) -> str:
+        """
+        Posta un ricordo e ritorna il memory_id assegnato.
+        Lancia RuntimeError su errori HTTP.
+        """
+        payload = json.dumps(
+            memory.to_payload(), ensure_ascii=False
+        ).encode("utf-8")
+
+        req = urllib.request.Request(
+            self._mem_url,
+            data    = payload,
+            headers = {
+                "Content-Type": "application/json",
+                "accept":       "application/json",
+            },
+            method = "POST",
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                data = json.loads(resp.read())
+            return (
+                data.get("memory_id")
+                or data.get("id")
+                or data.get("_id")
+                or "?"
+            )
+        except urllib.error.HTTPError as e:
+            body = e.read().decode("utf-8", errors="replace")[:200]
+            raise RuntimeError(f"API HTTP {e.code}: {body}") from e
+
+
+# ────────────────────────────────────────────────────────────
+# GENERATOR
+# ────────────────────────────────────────────────────────────
+
+_SYSTEM_PROMPT = (
+    "Sei un generatore di ricordi personali umani e realistici. "
+    "Rispondi SEMPRE e SOLO con JSON valido, nessun testo extra, "
+    "nessun markdown, nessun backtick."
+)
+
+_DOMAINS = [
+    "lavoro", "famiglia", "amicizia", "amore", "salute", "corpo",
+    "denaro", "casa", "scuola", "tempo libero", "solitudine", "viaggi",
+    "perdita", "crescita", "errori", "soddisfazioni", "paure", "sogni",
+    "conflitti", "riconciliazioni", "routine", "cambiamenti",
+]
+
+
+def _build_prompt(
+    n                : int,
+    used_concepts    : list[str],
+    used_feelings    : list[str],
+    used_contents_prefix: list[str],
+) -> str:
+    """Costruisce il prompt per generare n ricordi diversi."""
+    domains_sample = random.sample(_DOMAINS, min(6, len(_DOMAINS)))
+    seed = random.randint(0, 99_999_999)
+
+    avoid_concepts = json.dumps(used_concepts[-40:], ensure_ascii=False)
+    avoid_feelings = json.dumps(used_feelings[-10:], ensure_ascii=False)
+    avoid_prefixes = json.dumps(
+        [c[:30] for c in used_contents_prefix[-20:]], ensure_ascii=False
+    )
+
+    return textwrap.dedent(f"""
+        SEED: {seed}
+        AMBITI SUGGERITI (scegli liberamente tra questi e altri): {', '.join(domains_sample)}
+
+        Genera esattamente {n} ricordi personali COMPLETAMENTE DISTINTI.
+
+        REGOLE CONCEPT:
+        - Una sola parola (sostantivo singolo, minuscolo, senza articoli)
+        - Esempi buoni: "mutuo", "licenziamento", "tradimento", "dentista"
+        - NON ripetere: {avoid_concepts}
+
+        REGOLE FEELING:
+        - Valore ESATTO tra: {json.dumps(VALID_FEELINGS, ensure_ascii=False)}
+        - Evita se possibile: {avoid_feelings}
+
+        REGOLE CONTENT:
+        - Prima persona, specifico e concreto (1-3 righe, max 200 caratteri)
+        - Evita inizi troppo simili a: {avoid_prefixes}
+        - Niente cliché ("mi sono reso conto", "ho capito che", "oggi ho scoperto")
+
+        REGOLE NOTE:
+        - Contesto aggiuntivo breve (luogo, data approssimativa, chi c'era)
+        - Può essere vuota ""
+
+        REGOLE TAGS:
+        - Lista di 1-4 stringhe, minuscolo, specifiche
+        - Esempi: ["2019", "Milano", "lavoro", "collega"]
+
+        OUTPUT — array JSON di {n} oggetti, niente altro:
+        [
+          {{
+            "concept": "parolasingola",
+            "feeling": "uno_dei_valori_validi",
+            "content": "...",
+            "note": "...",
+            "tags": ["tag1", "tag2"]
+          }}
+        ]
+    """).strip()
+
+
+def _clean_concept(raw: str) -> str:
+    """Normalizza il concept: prima parola, minuscolo, solo alfanumerici."""
+    word = raw.strip().split()[0] if raw.strip() else "ricordo"
+    # rimuove caratteri non-word
+    import re
+    word = re.sub(r"[^\w]", "", word, flags=re.UNICODE)
+    return word.lower() or "ricordo"
+
+
+def _parse_memories(text: str) -> list[dict]:
+    """
+    Estrae la lista JSON dal testo del modello.
+    Gestisce: risposta già JSON, JSON annidato in testo, array parziale.
+    """
+    text = text.strip()
+
+    # Rimuovi eventuali code fences
+    if text.startswith("```"):
+        lines = [l for l in text.splitlines() if not l.strip().startswith("```")]
+        text = "\n".join(lines).strip()
+
+    # Tentativo 1: parse diretto
+    try:
+        result = json.loads(text)
+        if isinstance(result, list):
+            return result
+        if isinstance(result, dict) and "memories" in result:
+            return result["memories"]
+    except json.JSONDecodeError:
+        pass
+
+    # Tentativo 2: estrai il primo array JSON valido
+    import re
+    match = re.search(r"\[\s*\{.*?\}\s*\]", text, re.DOTALL)
+    if match:
+        try:
+            return json.loads(match.group())
+        except json.JSONDecodeError:
+            pass
+
+    raise ValueError(f"Impossibile estrarre JSON dalla risposta:\n{text[:400]}")
+
+
+def _validate_record(item: dict) -> MemoryRecord | None:
+    """
+    Valida e normalizza un oggetto ricordo.
+    Restituisce None se il record è irrecuperabile.
+    """
+    concept = _clean_concept(str(item.get("concept", "")))
+    if not concept:
+        return None
+
+    feeling = str(item.get("feeling", "")).strip()
+    if feeling not in VALID_FEELINGS:
+        # Prova a correggere feeling parziale (es. "senso di colpa" → "senso_di_colpa")
+        feeling_norm = feeling.replace(" ", "_")
+        if feeling_norm in VALID_FEELINGS:
+            feeling = feeling_norm
+        else:
+            feeling = random.choice(VALID_FEELINGS)
+
+    content = str(item.get("content", "")).strip()
+    if not content:
+        return None
+
+    # Tronca content se troppo lungo
+    if len(content) > 400:
+        content = content[:397] + "…"
+
+    note = str(item.get("note", "")).strip()[:200]
+
+    # Tags: assicura lista di stringhe
+    raw_tags = item.get("tags", [])
+    if isinstance(raw_tags, str):
+        raw_tags = [t.strip() for t in raw_tags.split(",") if t.strip()]
+    tags = [str(t).strip().lower() for t in raw_tags if t][:6]
+
+    return MemoryRecord(
+        concept    = concept,
+        feeling    = feeling,
+        content    = content,
+        media_type = "text",
+        note       = note,
+        tags       = tags,
+    )
+
+
+# ────────────────────────────────────────────────────────────
+# BATCH WORKER
+# ────────────────────────────────────────────────────────────
+
+def _generate_batch(
+    llm          : LLMClient,
+    api          : MnhemeClient,
+    batch_size   : int,
+    batch_id     : int,
+    used_concepts: list[str],
+    used_feelings: list[str],
+    used_contents: list[str],
+    dry_run      : bool,
+    verbose      : bool,
+    max_retries  : int = 3,
+) -> list[tuple[MemoryRecord, str | None]]:
+    """
+    Genera un batch di ricordi e li posta sull'API.
+    Ritorna lista di (MemoryRecord, memory_id | None).
+    """
+    results: list[tuple[MemoryRecord, str | None]] = []
+
+    for attempt in range(1, max_retries + 1):
+        try:
+            prompt = _build_prompt(
+                batch_size, used_concepts, used_feelings, used_contents
+            )
+            raw = llm.complete(
+                _SYSTEM_PROMPT, prompt,
+                temperature = 0.95 + random.uniform(-0.05, 0.15),
+                max_tokens  = 2048,
+            )
+            raw_list = _parse_memories(raw)
+            break
+        except (RuntimeError, ValueError) as e:
+            if attempt == max_retries:
+                print(f"  {_c(RED,'✗')} batch {batch_id} fallito dopo {max_retries} tentativi: {e}")
+                return []
+            wait = 2 ** attempt
+            print(f"  {_c(YLW,'⚠')} batch {batch_id} tentativo {attempt} fallito ({e}), retry in {wait}s…")
+            time.sleep(wait)
+
+    validated: list[MemoryRecord] = []
+    for item in raw_list:
+        record = _validate_record(item)
+        if record is None:
+            if verbose:
+                print(f"  {_c(DIM,'·')} record scartato: {json.dumps(item, ensure_ascii=False)[:80]}")
+            continue
+        # Dedup locale: salta se il concept è già in questo batch
+        if record.concept in [r.concept for r in validated]:
+            if verbose:
+                print(f"  {_c(DIM,'·')} concept duplicato in batch: {record.concept}")
+            continue
+        validated.append(record)
+
+    for record in validated[:batch_size]:
+        memory_id = None
+        if not dry_run:
+            for attempt in range(1, max_retries + 1):
+                try:
+                    memory_id = api.post(record)
+                    break
+                except RuntimeError as e:
+                    if attempt == max_retries:
+                        print(f"  {_c(RED,'✗')} POST fallito per [{record.concept}]: {e}")
+                    else:
+                        time.sleep(1.5 ** attempt)
+
+        status = _c(GRN, "✓") if (memory_id or dry_run) else _c(RED, "✗")
+        id_str = _c(DIM, f"id: {memory_id}") if memory_id else (_c(DIM, "dry-run") if dry_run else "")
+        feeling_col = _c(CYN, record.feeling)
+        tags_str = _c(DIM, f"[{', '.join(record.tags)}]") if record.tags else ""
+
+        print(f"  {status} {_c(BOLD, record.concept):<22} {feeling_col:<24} {id_str} {tags_str}")
+        if verbose:
+            wrapped = textwrap.fill(record.content, width=72, initial_indent="     ")
+            print(_c(DIM, wrapped))
+
+        results.append((record, memory_id))
+
+    return results
+
+
+# ────────────────────────────────────────────────────────────
+# MAIN
+# ────────────────────────────────────────────────────────────
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="Genera ricordi sintetici per MNHEME via LLM locale.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=textwrap.dedent("""
+            Esempi:
+              python generate_memories.py --n 20
+              python generate_memories.py --n 50 --llm-url http://localhost:1234
+              python generate_memories.py --n 10 --dry-run --verbose
+              python generate_memories.py --n 100 --batch-size 8 --workers 4
+        """),
+    )
+    parser.add_argument("--n",           type=int,   default=10,                        help="Numero totale di ricordi da generare (default: 10)")
+    parser.add_argument("--llm-url",     type=str,   default="http://localhost:1234",    help="Base URL del server LLM (default: http://localhost:1234)")
+    parser.add_argument("--model",       type=str,   default="",                        help="Nome modello (default: auto-discovery da /v1/models)")
+    parser.add_argument("--api-key",     type=str,   default="",                        help="API key per il server LLM (opzionale)")
+    parser.add_argument("--api-url",     type=str,   default="http://localhost:8000",    help="URL base API MNHEME (default: http://localhost:8000)")
+    parser.add_argument("--batch-size",  type=int,   default=5,                         help="Ricordi per batch LLM (default: 5)")
+    parser.add_argument("--workers",     type=int,   default=3,                         help="Thread paralleli per i batch (default: 3)")
+    parser.add_argument("--dry-run",     action="store_true",                            help="Genera senza postare sull'API")
+    parser.add_argument("--verbose",     action="store_true",                            help="Stampa il content completo di ogni ricordo")
+    parser.add_argument("--sequential",  action="store_true",                            help="Disabilita la generazione parallela (utile per debug)")
+    args = parser.parse_args()
+
+    # ── Banner ──────────────────────────────────────────────
+    print(f"\n{_c(BOLD,'MNHEME — Memory Generator')}  {_c(DIM,'v2.0')}")
+    print("─" * 55)
+
+    # ── Setup LLM ───────────────────────────────────────────
+    llm = LLMClient(args.llm_url, model=args.model, api_key=args.api_key)
+
+    if not args.model:
+        print(f"  {_c(CYN,'→')} Auto-discovery modello da {args.llm_url}…", end=" ", flush=True)
+        try:
+            llm.model = llm.discover_model()
+            print(_c(GRN, llm.model))
+        except RuntimeError as e:
+            print(_c(RED, "fallito"))
+            print(f"\n  {_c(RED,'Errore:')} {e}")
+            sys.exit(1)
+    else:
+        print(f"  {_c(CYN,'→')} Modello: {_c(GRN, llm.model)}")
+
+    # ── Setup API ───────────────────────────────────────────
+    api = MnhemeClient(args.api_url)
+
+    if not args.dry_run:
+        print(f"  {_c(CYN,'→')} Ping MNHEME API {args.api_url}…", end=" ", flush=True)
+        if api.ping():
+            print(_c(GRN, "ok"))
+        else:
+            print(_c(YLW, "non raggiungibile — continuo comunque"))
+    else:
+        print(f"  {_c(YLW,'→')} Modalità DRY-RUN — nessun POST all'API")
+
+    # ── Calcola batch ────────────────────────────────────────
+    bs         = max(1, min(args.batch_size, 10))  # cap a 10 per qualità
+    n_batches  = (args.n + bs - 1) // bs
+    batch_sizes = [bs] * n_batches
+    batch_sizes[-1] = args.n - bs * (n_batches - 1)
+
+    print(f"\n  {_c(DIM,f'Generando {args.n} ricordi in {n_batches} batch da {bs} · {args.workers} worker paralleli')}")
+    print("─" * 55)
+
+    # ── Stato condiviso per evitare duplicati cross-batch ───
+    # (lock-free: i batch paralleli leggono lo snapshot iniziale;
+    #  aggiorniamo la lista globale dopo ogni batch completato)
+    all_results: list[tuple[MemoryRecord, str | None]] = []
+    used_concepts: list[str] = []
+    used_feelings: list[str] = []
+    used_contents: list[str] = []
+
+    start = time.perf_counter()
+
+    if args.sequential or n_batches == 1:
+        # ── Modalità sequenziale ─────────────────────────────
+        for i, size in enumerate(batch_sizes, 1):
+            print(f"\n  {_c(DIM, f'Batch {i}/{n_batches} ({size} ricordi)')}") 
+            batch_res = _generate_batch(
+                llm, api, size, i,
+                list(used_concepts), list(used_feelings), list(used_contents),
+                args.dry_run, args.verbose,
+            )
+            for rec, mid in batch_res:
+                used_concepts.append(rec.concept)
+                used_feelings.append(rec.feeling)
+                used_contents.append(rec.content)
+            all_results.extend(batch_res)
+    else:
+        # ── Modalità parallela ───────────────────────────────
+        # I batch girano in parallelo con lo snapshot di used_* al momento del lancio.
+        # Questo può produrre qualche duplicato tra batch diversi — accettabile per performance.
+        snapshot_concepts = list(used_concepts)
+        snapshot_feelings = list(used_feelings)
+        snapshot_contents = list(used_contents)
+
+        with ThreadPoolExecutor(max_workers=min(args.workers, n_batches)) as pool:
             futures = {
-                executor.submit(self._generate_and_post, size): size
-                for size in batch_sizes
+                pool.submit(
+                    _generate_batch,
+                    llm, api, size, i,
+                    snapshot_concepts + [r.concept for r, _ in all_results],
+                    snapshot_feelings + [r.feeling for r, _ in all_results],
+                    snapshot_contents + [r.content for r, _ in all_results],
+                    args.dry_run, args.verbose,
+                ): i
+                for i, size in enumerate(batch_sizes, 1)
             }
             for future in as_completed(futures):
+                batch_id = futures[future]
                 try:
-                    batch_result = future.result()
-                    all_results.extend(batch_result)
-                    print(f"   batch completato: {len(batch_result)} ricordi")
+                    batch_res = future.result()
+                    all_results.extend(batch_res)
+                    print(f"  {_c(DIM, f'Batch {batch_id} completato: {len(batch_res)} ricordi')}")
                 except Exception as e:
-                    print(f"   ✗ batch fallito: {e}")
+                    print(f"  {_c(RED,'✗')} batch {batch_id} eccezione: {e}")
 
-        return all_results[:n]
+    elapsed = time.perf_counter() - start
 
+    # ── Riepilogo finale ─────────────────────────────────────
+    ok      = sum(1 for _, mid in all_results if mid or args.dry_run)
+    failed  = len(all_results) - ok
+    skipped = args.n - len(all_results)
 
-# -------- MAIN --------
-def main():
-    gen = LLMGenerator()
-    results = gen.generate(args.n)
+    print(f"\n{'─'*55}")
+    print(f"  {_c(BOLD,'Completato')} in {elapsed:.1f}s")
+    print(f"  {_c(GRN, str(ok))} postati  ·  "
+          f"{_c(RED, str(failed))} falliti  ·  "
+          f"{_c(YLW, str(skipped))} saltati")
 
-    print(f"\n--- {len(results)} RICORDI GENERATI E POSTATI ---\n")
-    for i, (m, memory_id) in enumerate(results, 1):
-        print(f"{i}. [{m.feeling.value}] {m.concept}  (id: {memory_id or '?'})")
-        print(f"   {m.content}")
-        if m.note:
-            print(f"   nota: {m.note}")
-        if m.tags:
-            print(f"   tag: {', '.join(m.tags)}")
-        print()
+    if all_results:
+        concepts_used = sorted({r.concept for r, _ in all_results})
+        feelings_dist: dict[str, int] = {}
+        for r, _ in all_results:
+            feelings_dist[r.feeling] = feelings_dist.get(r.feeling, 0) + 1
+
+        print(f"\n  {_c(DIM,'Concetti generati:')} {', '.join(concepts_used)}")
+        print(f"  {_c(DIM,'Distribuzione emotiva:')}")
+        for feeling, count in sorted(feelings_dist.items(), key=lambda x: -x[1]):
+            bar = "█" * count
+            print(f"    {feeling:<20} {_c(CYN, bar)} {count}")
+
+    print()
 
 
 if __name__ == "__main__":
