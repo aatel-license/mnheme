@@ -63,9 +63,7 @@ from typing import Optional
 import sys
 import pathlib
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
-from pathlib import Path
-# Aggiunge la root del progetto al path
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+
 from mnheme       import MemoryDB, Memory
 from llm_provider import LLMProvider, LLMError
 
@@ -128,8 +126,8 @@ class TwinProfile:
     epitaph         : frase che la persona ha scelto per sé (opzionale)
     curator_name    : nome del curatore del twin (chi ha costruito il db)
     """
-    name            : str
-    birth_year      : int
+    name            : Optional[str]        = None
+    birth_year      : Optional[int]        = None
     death_year      : Optional[int]        = None
     language        : str                  = "italiano"
     voice_notes     : str                  = ""
@@ -138,9 +136,26 @@ class TwinProfile:
     epitaph         : str                  = ""
     curator_name    : str                  = ""
 
+    def __post_init__(self):
+        # Garantisce che i campi stringa non siano mai None
+        if not self.name:
+            self.name = "Sconosciuto"
+        if not self.language:
+            self.language = "italiano"
+        if self.birth_year is None:
+            self.birth_year = 1970
+        if self.voice_notes is None:
+            self.voice_notes = ""
+        if self.epitaph is None:
+            self.epitaph = ""
+        if self.curator_name is None:
+            self.curator_name = ""
+        if self.values is None:
+            self.values = []
+
     @property
     def age_at_death(self) -> Optional[int]:
-        if self.death_year:
+        if self.death_year and self.birth_year:
             return self.death_year - self.birth_year
         return None
 
@@ -680,18 +695,18 @@ class DigitalTwin:
         p = self._profile
         s = self._vault.stats(AccessTier.FULL)
         return {
-            "name"             : p.name,
+            "name"             : p.name or "Sconosciuto",
             "born"             : p.birth_year,
             "died"             : p.death_year,
             "age_at_death"     : p.age_at_death,
-            "language"         : p.language,
+            "language"         : p.language or "italiano",
             "total_memories"   : s["total_in_db"],
             "embargo_active"   : p.embargo_active(),
             "embargo_until"    : p.embargo_lifted_year,
             "dominant_concepts": [c for c, _ in s["top_concepts"][:5]],
             "emotional_map"    : s["feeling_dist"],
-            "curator"          : p.curator_name,
-            "epitaph"          : p.epitaph,
+            "curator"          : p.curator_name or "",
+            "epitaph"          : p.epitaph or "",
         }
 
     def __repr__(self) -> str:
