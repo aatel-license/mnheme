@@ -94,13 +94,357 @@ function buildThemePicker() {
 buildThemePicker();
 
 
-const FEELING_LABELS = {
-  gioia: '✨ Joy', tristezza: '🌧 Sadness', rabbia: '🔥 Anger',
-  paura: '🌑 Fear', nostalgia: '🍂 Nostalgia', amore: '❤ Love',
-  malinconia: '🌊 Melancholy', serenità: '🌿 Serenity', sorpresa: '⚡ Surprise',
-  ansia: '🌀 Anxiety', gratitudine: '✿ Gratitude', vergogna: '◈ Shame',
-  orgoglio: '▲ Pride', noia: '— Boredom', curiosità: '◎ Curiosity',
+/* ── i18n system ─────────────────────────────────────────── */
+let _lang = localStorage.getItem('mnheme_lang') || 'en';
+
+const FEELINGS_I18N = {
+  en: {
+    ansia:'🌀 Anxiety', paura:'🌑 Fear', sollievo:'😮‍💨 Relief',
+    tristezza:'🌧 Sadness', gioia:'✨ Joy', rabbia:'🔥 Anger',
+    vergogna:'◈ Shame', senso_di_colpa:'😔 Guilt',
+    nostalgia:'🍂 Nostalgia', speranza:'🌱 Hope',
+    orgoglio:'▲ Pride', delusione:'💔 Disappointment',
+    solitudine:'🌙 Loneliness', confusione:'🌀 Confusion',
+    gratitudine:'✿ Gratitude', invidia:'💚 Envy',
+    imbarazzo:'😳 Embarrassment', eccitazione:'⚡ Excitement',
+    rassegnazione:'🏳 Resignation', stupore:'✨ Awe',
+    amore:'❤ Love', malinconia:'🌊 Melancholy',
+    serenità:'🌿 Serenity', sorpresa:'⚡ Surprise',
+    noia:'— Boredom', curiosità:'◎ Curiosity',
+  },
+  it: {
+    ansia:'🌀 Ansia', paura:'🌑 Paura', sollievo:'😮‍💨 Sollievo',
+    tristezza:'🌧 Tristezza', gioia:'✨ Gioia', rabbia:'🔥 Rabbia',
+    vergogna:'◈ Vergogna', senso_di_colpa:'😔 Senso di colpa',
+    nostalgia:'🍂 Nostalgia', speranza:'🌱 Speranza',
+    orgoglio:'▲ Orgoglio', delusione:'💔 Delusione',
+    solitudine:'🌙 Solitudine', confusione:'🌀 Confusione',
+    gratitudine:'✿ Gratitudine', invidia:'💚 Invidia',
+    imbarazzo:'😳 Imbarazzo', eccitazione:'⚡ Eccitazione',
+    rassegnazione:'🏳 Rassegnazione', stupore:'✨ Stupore',
+    amore:'❤ Amore', malinconia:'🌊 Malinconia',
+    serenità:'🌿 Serenità', sorpresa:'⚡ Sorpresa',
+    noia:'— Noia', curiosità:'◎ Curiosità',
+  },
+  es: {
+    ansia:'🌀 Ansiedad', paura:'🌑 Miedo', sollievo:'😮‍💨 Alivio',
+    tristezza:'🌧 Tristeza', gioia:'✨ Alegría', rabbia:'🔥 Ira',
+    vergogna:'◈ Vergüenza', senso_di_colpa:'😔 Culpa',
+    nostalgia:'🍂 Nostalgia', speranza:'🌱 Esperanza',
+    orgoglio:'▲ Orgullo', delusione:'💔 Decepción',
+    solitudine:'🌙 Soledad', confusione:'🌀 Confusión',
+    gratitudine:'✿ Gratitud', invidia:'💚 Envidia',
+    imbarazzo:'😳 Embarazo', eccitazione:'⚡ Emoción',
+    rassegnazione:'🏳 Resignación', stupore:'✨ Asombro',
+    amore:'❤ Amor', malinconia:'🌊 Melancolía',
+    serenità:'🌿 Serenidad', sorpresa:'⚡ Sorpresa',
+    noia:'— Aburrimiento', curiosità:'◎ Curiosidad',
+  },
+  zh: {
+    ansia:'🌀 焦虑', paura:'🌑 恐惧', sollievo:'😮‍💨 如释重负',
+    tristezza:'🌧 悲伤', gioia:'✨ 喜悦', rabbia:'🔥 愤怒',
+    vergogna:'◈ 羞耻', senso_di_colpa:'😔 内疚',
+    nostalgia:'🍂 怀旧', speranza:'🌱 希望',
+    orgoglio:'▲ 自豪', delusione:'💔 失望',
+    solitudine:'🌙 孤独', confusione:'🌀 困惑',
+    gratitudine:'✿ 感激', invidia:'💚 嫉妒',
+    imbarazzo:'😳 尴尬', eccitazione:'⚡ 兴奋',
+    rassegnazione:'🏳 听天由命', stupore:'✨ 惊叹',
+    amore:'❤ 爱', malinconia:'🌊 忧郁',
+    serenità:'🌿 宁静', sorpresa:'⚡ 惊讶',
+    noia:'— 无聊', curiosità:'◎ 好奇',
+  },
 };
+
+const UI_I18N = {
+  en: {
+    selectFeeling: '— select —', allFeelings: 'All feelings',
+    allFeelings2: 'All', autoFeeling: 'auto',
+    styleNarrative: 'Narrative', styleAnalytical: 'Analytical', stylePoetic: 'Poetic',
+
+    // Static UI text
+    navMemory:'Memory', navExplore:'Explore', navSystem:'System', navBrain:'Brain · LLM',
+    titleNewMemory:'New Memory', descNewMemory:'Append a new immutable memory to the database.',
+    labelConcept:'Concept', labelConcept2:'Concept', labelConcept3:'Concept',
+    labelConcept4:'Concept', labelConcept5:'Concept',
+    labelFeeling:'Feeling', labelFeeling2:'Feeling',
+    labelContent:'Content', labelNote:'Note', labelNote2:'Note',
+    labelMediaType:'Media type', labelTags:'Tags',
+    labelRawInput:'Raw input', labelConceptOverride:'Concept',
+    labelQuestion:'Question', labelMaxMemories:'Max memories',
+    labelMaxMem2:'Max memories', labelMemSample:'Memories to sample',
+    labelFeelingFilter:'Feeling filter', labelFilterFeeling:'Filter feeling',
+    labelLimit:'Limit', labelOrder:'Order', labelByTag:'By tag:',
+    labelConceptFilter:'Concept filter', labelFeelingOpt:'Feeling',
+    labelConceptOpt:'Concept', labelStyle:'Style',
+    labelIncludeContent:'Include content field',
+    labelReqLog:'Request log',
+    optOptional:'optional', optCommaSep:'comma separated',
+    optOverrideLLM:'override LLM', optNewest:'Newest first', optOldest:'Oldest first',
+    btnRemember:'Remember', btnClear:'Clear', btnFetch:'Fetch',
+    btnSearch:'Search', btnTagSearch:'Tag search',
+    btnLoadConcepts:'Load concepts', btnClose:'✕ Close',
+    btnFetchMemories:'Fetch memories', btnLoadDist:'Load distribution',
+    btnLoadTimeline:'Load timeline', btnRefreshStats:'Refresh stats',
+    btnExportJSON:'Export JSON', btnDownload:'Download file',
+    btnClearLog:'clear',
+    titleBrowse:'Browse Memories', descBrowse:'Retrieve memories with optional filters.',
+    titleSearch:'Search', descSearch:'Full-text search via inverted index — O(k).',
+    titleConcepts:'Concepts', descConcepts:'All conceptual keys with emotional distribution.',
+    titleFeelings:'Feelings', descFeelings:'Emotional distribution across the entire database.',
+    titleTimeline:'Timeline', descTimeline:'Emotional arc of a concept over time.',
+    titleStats:'Stats', descStats:'General database statistics and storage info.',
+    titleExport:'Export', descExport:'Export memories as JSON with optional filters.',
+    phConcept:'Debt, Family, Work…', phContent:'Write the memory…',
+    phNote:'Context, annotations…', phTags:'house, 2024, urgent…',
+    phSearch:'Type to search memories…', phTag:'home, work, urgent…',
+    phConceptFilter:'All concepts if empty', phRawInput:'Write freely — a thought, an event, an emotion…',
+    phAuto:'auto', phQuestion:"How do I feel about money? Is there anything unresolved?",
+    phAllConcepts:'All concepts',
+    // Brain loading
+    loadPerceiving: () => 'Brain is perceiving…',
+    loadAsking:     () => 'Brain is searching memories…',
+    loadReflecting: (c) => `Emotional analysis of "${c}"`,
+    loadDreaming:   (n) => `Sampling ${n} memories from different emotions`,
+    loadIntrospect: () => 'Analysing entire memory…',
+    loadSummarize:  (s) => `Style ${s} — collecting memories`,
+    // Toasts
+    toastRequired:   () => 'Concept, feeling and content are required.',
+    toastEnterInput: () => 'Enter an input.',
+    toastEnterQ:     () => 'Enter a question.',
+    toastEnterConcept: () => 'Enter a concept name.',
+    toastSaved:    (c,f) => `Memory saved: ${c} / ${f}`,
+    toastPerceived:(c,f) => `Perception saved: ${c} / ${f}`,
+    toastPercErr:  () => 'Perceive failed',
+    toastAskErr:   () => 'Ask failed',
+    toastRefErr:   () => 'Reflect failed',
+    toastDreamErr: () => 'Dream failed',
+    toastIntErr:   () => 'Introspect failed',
+    toastSumErr:   () => 'Summarize failed',
+    // Response headers
+    respPerceived: () => '✦ Memory perceived',
+    respAnswer:    () => '✦ Answer',
+    respReflect:   (c) => `✦ Reflection — ${c}`,
+    respDream:     () => '✦ Dream',
+    respIntrospect:() => '✦ Introspection',
+    respSummary:   (s) => `✦ Summary — ${s}`,
+    // Counts
+    memoriesCtx:     (n) => `${n} memor${n!==1?'ies':'y'} used as context`,
+    memoriesOf:      (n) => `${n} memor${n!==1?'ies':'y'}`,
+    memoriesSampled: (n) => `${n} memor${n!==1?'ies':'y'} sampled`,
+    memoriesAnalysed:(n) => `${n} memor${n!==1?'ies':'y'} analysed`,
+  },
+  it: {
+    selectFeeling: '— seleziona —', allFeelings: 'Tutti i sentimenti',
+    allFeelings2: 'Tutti', autoFeeling: 'auto',
+    styleNarrative: 'Narrativo', styleAnalytical: 'Analitico', stylePoetic: 'Poetico',
+    loadPerceiving: () => 'Il Brain sta percependo…',
+    loadAsking:     () => 'Il Brain sta cercando nei ricordi…',
+    loadReflecting: (c) => `Analisi emotiva di "${c}"`,
+    loadDreaming:   (n) => `Campionamento di ${n} ricordi`,
+    loadIntrospect: () => "Analisi dell'intera memoria…",
+    loadSummarize:  (s) => `Stile ${s} — raccogliendo ricordi`,
+    toastRequired:   () => 'Concept, sentimento e contenuto sono obbligatori.',
+    toastEnterInput: () => 'Inserisci un input.',
+    toastEnterQ:     () => 'Inserisci una domanda.',
+    toastEnterConcept: () => 'Inserisci un concetto.',
+    toastSaved:    (c,f) => `Ricordo salvato: ${c} / ${f}`,
+    toastPerceived:(c,f) => `Percezione salvata: ${c} / ${f}`,
+    toastPercErr:  () => 'Perceive fallito',
+    toastAskErr:   () => 'Ask fallito',
+    toastRefErr:   () => 'Reflect fallito',
+    toastDreamErr: () => 'Dream fallito',
+    toastIntErr:   () => 'Introspect fallito',
+    toastSumErr:   () => 'Summarize fallito',
+    respPerceived: () => '✦ Ricordo percepito',
+    respAnswer:    () => '✦ Risposta',
+    respReflect:   (c) => `✦ Riflessione — ${c}`,
+    respDream:     () => '✦ Sogno',
+    respIntrospect:() => '✦ Introspezione',
+    respSummary:   (s) => `✦ Riassunto — ${s}`,
+    memoriesCtx:     (n) => `${n} ricord${n!==1?'i':'o'} come contesto`,
+    memoriesOf:      (n) => `${n} ricord${n!==1?'i':'o'}`,
+    memoriesSampled: (n) => `${n} ricord${n!==1?'i':'o'} campionati`,
+    memoriesAnalysed:(n) => `${n} ricord${n!==1?'i':'o'} analizzati`,
+  },
+  es: {
+    selectFeeling: '— seleccionar —', allFeelings: 'Todos los sentimientos',
+    allFeelings2: 'Todos', autoFeeling: 'auto',
+    styleNarrative: 'Narrativo', styleAnalytical: 'Analítico', stylePoetic: 'Poético',
+    loadPerceiving: () => 'El Brain está percibiendo…',
+    loadAsking:     () => 'El Brain está buscando recuerdos…',
+    loadReflecting: (c) => `Análisis emocional de "${c}"`,
+    loadDreaming:   (n) => `Muestreando ${n} recuerdos`,
+    loadIntrospect: () => 'Analizando toda la memoria…',
+    loadSummarize:  (s) => `Estilo ${s} — recopilando recuerdos`,
+    toastRequired:   () => 'Concept, sentimiento y contenido son obligatorios.',
+    toastEnterInput: () => 'Introduce un input.',
+    toastEnterQ:     () => 'Introduce una pregunta.',
+    toastEnterConcept: () => 'Introduce un concepto.',
+    toastSaved:    (c,f) => `Recuerdo guardado: ${c} / ${f}`,
+    toastPerceived:(c,f) => `Percepción guardada: ${c} / ${f}`,
+    toastPercErr:  () => 'Perceive falló',
+    toastAskErr:   () => 'Ask falló',
+    toastRefErr:   () => 'Reflect falló',
+    toastDreamErr: () => 'Dream falló',
+    toastIntErr:   () => 'Introspect falló',
+    toastSumErr:   () => 'Summarize falló',
+    respPerceived: () => '✦ Recuerdo percibido',
+    respAnswer:    () => '✦ Respuesta',
+    respReflect:   (c) => `✦ Reflexión — ${c}`,
+    respDream:     () => '✦ Sueño',
+    respIntrospect:() => '✦ Introspección',
+    respSummary:   (s) => `✦ Resumen — ${s}`,
+    memoriesCtx:     (n) => `${n} recuerdo${n!==1?'s':''} como contexto`,
+    memoriesOf:      (n) => `${n} recuerdo${n!==1?'s':''}`,
+    memoriesSampled: (n) => `${n} recuerdo${n!==1?'s':''} muestreados`,
+    memoriesAnalysed:(n) => `${n} recuerdo${n!==1?'s':''} analizados`,
+  },
+  zh: {
+    selectFeeling: '— 选择 —', allFeelings: '所有情感',
+    allFeelings2: '全部', autoFeeling: '自动',
+    styleNarrative: '叙述式', styleAnalytical: '分析式', stylePoetic: '诗意式',
+    loadPerceiving: () => 'Brain 正在感知…',
+    loadAsking:     () => 'Brain 正在搜索记忆…',
+    loadReflecting: (c) => `情感分析：「${c}」`,
+    loadDreaming:   (n) => `从不同情感中抽取 ${n} 条记忆`,
+    loadIntrospect: () => '正在分析全部记忆…',
+    loadSummarize:  (s) => `${s}风格 — 收集记忆中`,
+    toastRequired:   () => '概念、情感和内容为必填项。',
+    toastEnterInput: () => '请输入内容。',
+    toastEnterQ:     () => '请输入问题。',
+    toastEnterConcept: () => '请输入概念名称。',
+    toastSaved:    (c,f) => `记忆已保存：${c} / ${f}`,
+    toastPerceived:(c,f) => `感知已保存：${c} / ${f}`,
+    toastPercErr:  () => 'Perceive 失败',
+    toastAskErr:   () => 'Ask 失败',
+    toastRefErr:   () => 'Reflect 失败',
+    toastDreamErr: () => 'Dream 失败',
+    toastIntErr:   () => 'Introspect 失败',
+    toastSumErr:   () => 'Summarize 失败',
+    respPerceived: () => '✦ 记忆已感知',
+    respAnswer:    () => '✦ 回答',
+    respReflect:   (c) => `✦ 反思 — ${c}`,
+    respDream:     () => '✦ 梦境',
+    respIntrospect:() => '✦ 内省',
+    respSummary:   (s) => `✦ 摘要 — ${s}`,
+    memoriesCtx:     (n) => `${n} 条记忆作为上下文`,
+    memoriesOf:      (n) => `${n} 条记忆`,
+    memoriesSampled: (n) => `${n} 条记忆已抽取`,
+    memoriesAnalysed:(n) => `${n} 条记忆已分析`,
+    navMemory:'记忆', navExplore:'探索', navSystem:'系统', navBrain:'Brain · LLM',
+    titleNewMemory:'新记忆', descNewMemory:'向数据库追加一条不可变记忆。',
+    labelConcept:'概念', labelConcept2:'概念', labelConcept3:'概念',
+    labelConcept4:'概念', labelConcept5:'概念',
+    labelFeeling:'情感', labelFeeling2:'情感',
+    labelContent:'内容', labelNote:'备注', labelNote2:'备注',
+    labelMediaType:'媒体类型', labelTags:'标签',
+    labelRawInput:'自由输入', labelConceptOverride:'概念',
+    labelQuestion:'问题', labelMaxMemories:'最多记忆数',
+    labelMaxMem2:'最多记忆数', labelMemSample:'抽取记忆数',
+    labelFeelingFilter:'筛选情感', labelFilterFeeling:'筛选情感',
+    labelLimit:'限制', labelOrder:'排序', labelByTag:'按标签:',
+    labelConceptFilter:'筛选概念', labelFeelingOpt:'情感',
+    labelConceptOpt:'概念', labelStyle:'风格',
+    labelIncludeContent:'包含内容字段',
+    labelReqLog:'请求日志',
+    optOptional:'可选', optCommaSep:'逗号分隔',
+    optOverrideLLM:'覆盖LLM', optNewest:'最新优先', optOldest:'最旧优先',
+    btnRemember:'记住', btnClear:'清除', btnFetch:'获取',
+    btnSearch:'搜索', btnTagSearch:'按标签搜索',
+    btnLoadConcepts:'加载概念', btnClose:'✕ 关闭',
+    btnFetchMemories:'加载记忆', btnLoadDist:'加载分布',
+    btnLoadTimeline:'加载时间线', btnRefreshStats:'刷新统计',
+    btnExportJSON:'导出 JSON', btnDownload:'下载文件',
+    btnClearLog:'清空',
+    titleBrowse:'浏览记忆', descBrowse:'获取记忆，支持可选筛选条件。',
+    titleSearch:'搜索', descSearch:'基于倒排索引的全文搜索 — O(k)。',
+    titleConcepts:'概念', descConcepts:'所有概念键及其情感分布。',
+    titleFeelings:'情感', descFeelings:'整个数据库的情感分布。',
+    titleTimeline:'时间线', descTimeline:'概念随时间的情感弧线。',
+    titleStats:'统计', descStats:'数据库总体统计及存储信息。',
+    titleExport:'导出', descExport:'将记忆导出为JSON，支持可选筛选。',
+    phConcept:'债务、家庭、工作…', phContent:'写下记忆…',
+    phNote:'上下文、备注…', phTags:'家, 2024, 紧急…',
+    phSearch:'搜索记忆…', phTag:'家, 工作, 紧急…',
+    phConceptFilter:'空则全部', phRawInput:'自由书写 — 一个想法、一件事、一种情绪…',
+    phAuto:'自动', phQuestion:'我对金钱的真实感受是什么？',
+    phAllConcepts:'所有概念',
+  },
+};
+
+function ui(key, ...args) {
+  const d = UI_I18N[_lang] || UI_I18N.en;
+  const fn = d[key] ?? (UI_I18N.en[key]);
+  return typeof fn === 'function' ? fn(...args) : (fn || key);
+}
+
+function feelingLabel(val) {
+  return (FEELINGS_I18N[_lang] || FEELINGS_I18N.en)[val] || val;
+}
+const FEELING_LABELS = new Proxy({}, { get: (_, k) => feelingLabel(k) });
+
+/* Apply all data-i18n attributes to DOM */
+function applyI18n() {
+  const u = UI_I18N[_lang] || UI_I18N.en;
+  // textContent
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.dataset.i18n;
+    if (u[key] !== undefined) el.textContent = typeof u[key] === 'function' ? u[key]() : u[key];
+  });
+  // placeholder
+  document.querySelectorAll('[data-i18n-ph]').forEach(el => {
+    const key = el.dataset.i18nPh;
+    if (u[key] !== undefined) el.placeholder = u[key];
+  });
+}
+
+function rebuildFeelingSelects() {
+  const f = FEELINGS_I18N[_lang] || FEELINGS_I18N.en;
+  const u = UI_I18N[_lang] || UI_I18N.en;
+  document.querySelectorAll('.feeling-select').forEach(sel => {
+    const mode = sel.dataset.mode || 'all';
+    const cur  = sel.value;
+    sel.innerHTML = '';
+    const first = document.createElement('option');
+    first.value = '';
+    first.textContent = mode === 'select' ? u.selectFeeling
+                      : mode === 'auto'   ? u.autoFeeling
+                      : mode === 'all2'   ? u.allFeelings2
+                      : u.allFeelings;
+    sel.appendChild(first);
+    Object.entries(f).forEach(([val, label]) => {
+      const o = document.createElement('option');
+      o.value = val; o.textContent = label;
+      sel.appendChild(o);
+    });
+    if (cur && [...sel.options].some(o => o.value === cur)) sel.value = cur;
+  });
+  document.querySelectorAll('.style-select').forEach(sel => {
+    const cur = sel.value;
+    const u2 = UI_I18N[_lang] || UI_I18N.en;
+    sel.innerHTML = `
+      <option value="narrativo">${u2.styleNarrative}</option>
+      <option value="analitico">${u2.styleAnalytical}</option>
+      <option value="poetico">${u2.stylePoetic}</option>`;
+    if (cur) sel.value = cur;
+  });
+}
+
+function setLang(lang) {
+  if (!UI_I18N[lang]) return;
+  _lang = lang;
+  localStorage.setItem('mnheme_lang', lang);
+  document.querySelectorAll('.lang-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.lang === lang));
+  applyI18n();
+  rebuildFeelingSelects();
+  // Re-render any feeling chips already visible in the DOM
+  document.querySelectorAll('.memory-feeling[data-feeling]').forEach(el => {
+    el.textContent = feelingLabel(el.dataset.feeling);
+    el.className = `memory-feeling feeling-${CSS.escape(el.dataset.feeling)}`;
+  });
+}
 
 /* ═══════════════════════════════════════════════════════════
    HTTP CLIENT
@@ -244,8 +588,8 @@ function fmtDate(iso) {
 }
 
 function feelingHtml(feeling) {
-  const label = FEELING_LABELS[feeling] || feeling;
-  return `<span class="memory-feeling feeling-${CSS.escape(feeling)}">${label}</span>`;
+  const label = feelingLabel(feeling);
+  return `<span class="memory-feeling feeling-${CSS.escape(feeling)}" data-feeling="${esc(feeling)}">${label}</span>`;
 }
 
 function memoryCardHtml(m, i) {
@@ -899,10 +1243,10 @@ document.getElementById('btn-perceive').addEventListener('click', async () => {
   const concept = document.getElementById('perceive-concept').value.trim();
   const feeling = document.getElementById('perceive-feeling').value;
   const note    = document.getElementById('perceive-note').value.trim();
-  if (!raw) { toast('Inserisci un input.', 'info'); return; }
+  if (!raw) { toast(ui('toastEnterInput'), 'info'); return; }
 
   const restore = disableBtn('btn-perceive', 'Perceiving');
-  brainLoading('perceive-result', 'Il Brain sta percependo');
+  brainLoading('perceive-result', ui('loadPerceiving'));
   const t0 = performance.now();
 
   try {
@@ -931,11 +1275,11 @@ document.getElementById('btn-perceive').addEventListener('click', async () => {
         <div class="perceive-enriched md-content">${renderMarkdown(r.enriched_content)}</div>
         <div class="perceive-id">memory_id: ${r.memory_id}</div>
       </div>`;
-    toast(`Percezione salvata: ${r.extracted_concept} / ${r.extracted_feeling}`, 'success');
+    toast(ui('toastPerceived', r.extracted_concept, r.extracted_feeling), 'success');
     checkConnection();
   } catch (e) {
     brainError('perceive-result', e.detail || String(e));
-    toast('Perceive fallito', 'error');
+    toast(ui('toastPercErr'), 'error');
   } finally {
     restore();
   }
@@ -951,10 +1295,10 @@ document.getElementById('ask-question').addEventListener('keydown', e => {
 async function doAsk() {
   const question = document.getElementById('ask-question').value.trim();
   const max      = parseInt(document.getElementById('ask-max').value) || 15;
-  if (!question) { toast('Inserisci una domanda.', 'info'); return; }
+  if (!question) { toast(ui('toastEnterQ'), 'info'); return; }
 
   const restore = disableBtn('btn-ask', 'Asking');
-  brainLoading('ask-result', 'Il Brain sta cercando nei ricordi');
+  brainLoading('ask-result', ui('loadAsking'));
   const t0 = performance.now();
 
   try {
@@ -969,14 +1313,14 @@ async function doAsk() {
       <div class="ask-card">
         <div class="ask-answer md-content">${renderMarkdown(r.answer)}</div>
         <div class="ask-meta">
-          <span>${r.memories_used} memorie usate come contesto</span>
+          <span>${ui('memoriesCtx', r.memories_used)}</span>
           <span class="ask-confidence">${esc(r.confidence_note)}</span>
           <span style="margin-left:auto">${esc(r.provider_used)}</span>
         </div>
       </div>`;
   } catch (e) {
     brainError('ask-result', e.detail || String(e));
-    toast('Ask fallito', 'error');
+    toast(ui('toastAskErr'), 'error');
   } finally {
     restore();
   }
@@ -986,10 +1330,10 @@ async function doAsk() {
 
 document.getElementById('btn-reflect').addEventListener('click', async () => {
   const concept = document.getElementById('reflect-concept').value.trim();
-  if (!concept) { toast('Inserisci un concetto.', 'info'); return; }
+  if (!concept) { toast(ui('toastEnterConcept'), 'info'); return; }
 
   const restore = disableBtn('btn-reflect', 'Reflecting');
-  brainLoading('reflect-result', `Analisi emotiva di "${concept}"`);
+  brainLoading('reflect-result', ui('loadReflecting', concept));
   const t0 = performance.now();
 
   try {
@@ -999,7 +1343,7 @@ document.getElementById('btn-reflect').addEventListener('click', async () => {
     el.innerHTML = `
       <div class="brain-response-header">
         <span>✦ Reflection — ${esc(r.concept)}</span>
-        <span class="latency">${ms}ms &nbsp;·&nbsp; ${r.memories} memorie</span>
+        <span class="latency">${ms}ms &nbsp;·&nbsp; ${ui('memoriesOf', r.memories)}</span>
       </div>
       <div class="reflect-card">
         ${r.arc ? `<div class="reflect-arc md-content">${renderMarkdown(r.arc)}</div>` : ''}
@@ -1007,7 +1351,7 @@ document.getElementById('btn-reflect').addEventListener('click', async () => {
       </div>`;
   } catch (e) {
     brainError('reflect-result', e.detail || String(e));
-    toast('Reflect fallito', 'error');
+    toast(ui('toastRefErr'), 'error');
   } finally {
     restore();
   }
@@ -1018,7 +1362,7 @@ document.getElementById('btn-reflect').addEventListener('click', async () => {
 document.getElementById('btn-dream').addEventListener('click', async () => {
   const n       = parseInt(document.getElementById('dream-n').value) || 8;
   const restore = disableBtn('btn-dream', 'Dreaming');
-  brainLoading('dream-result', `Campionamento ${n} ricordi da sentimenti diversi`);
+  brainLoading('dream-result', ui('loadDreaming', n));
   const t0 = performance.now();
 
   try {
@@ -1032,7 +1376,7 @@ document.getElementById('btn-dream').addEventListener('click', async () => {
     el.innerHTML = `
       <div class="brain-response-header">
         <span>✦ Dream</span>
-        <span class="latency">${ms}ms &nbsp;·&nbsp; ${r.memories} memorie campionate</span>
+        <span class="latency">${ms}ms &nbsp;·&nbsp; ${ui('memoriesSampled', r.memories)}</span>
       </div>
       <div class="dream-card">
         <div class="dream-connections md-content">${renderMarkdown(r.connections)}</div>
@@ -1042,7 +1386,7 @@ document.getElementById('btn-dream').addEventListener('click', async () => {
       </div>`;
   } catch (e) {
     brainError('dream-result', e.detail || String(e));
-    toast('Dream fallito', 'error');
+    toast(ui('toastDreamErr'), 'error');
   } finally {
     restore();
   }
@@ -1052,7 +1396,7 @@ document.getElementById('btn-dream').addEventListener('click', async () => {
 
 document.getElementById('btn-introspect').addEventListener('click', async () => {
   const restore = disableBtn('btn-introspect', 'Introspecting');
-  brainLoading('introspect-result', 'Analisi dell\'intera memoria');
+  brainLoading('introspect-result', ui('loadIntrospect'));
   const t0 = performance.now();
 
   try {
@@ -1074,7 +1418,7 @@ document.getElementById('btn-introspect').addEventListener('click', async () => 
     el.innerHTML = `
       <div class="brain-response-header">
         <span>✦ Introspection</span>
-        <span class="latency">${ms}ms &nbsp;·&nbsp; ${r.total_memories} memorie analizzate</span>
+        <span class="latency">${ms}ms &nbsp;·&nbsp; ${ui('memoriesAnalysed', r.total_memories)}</span>
       </div>
       <div class="introspect-card">
         ${chips ? `<div class="introspect-dominant">${chips}</div>` : ''}
@@ -1086,7 +1430,7 @@ document.getElementById('btn-introspect').addEventListener('click', async () => 
       </div>`;
   } catch (e) {
     brainError('introspect-result', e.detail || String(e));
-    toast('Introspect fallito', 'error');
+    toast(ui('toastIntErr'), 'error');
   } finally {
     restore();
   }
@@ -1101,7 +1445,7 @@ document.getElementById('btn-summarize').addEventListener('click', async () => {
   const limit   = parseInt(document.getElementById('sum-limit').value) || 20;
 
   const restore = disableBtn('btn-summarize', 'Summarizing');
-  brainLoading('summarize-result', `Stile ${style} — raccogliendo ricordi`);
+  brainLoading('summarize-result', ui('loadSummarize', style));
   const t0 = performance.now();
 
   try {
@@ -1111,7 +1455,7 @@ document.getElementById('btn-summarize').addEventListener('click', async () => {
     el.innerHTML = `
       <div class="brain-response-header">
         <span>✦ Summary — ${esc(style)}</span>
-        <span class="latency">${ms}ms &nbsp;·&nbsp; ${r.memories_used} memorie</span>
+        <span class="latency">${ms}ms &nbsp;·&nbsp; ${ui('memoriesOf', r.memories_used)}</span>
       </div>
       <div class="summarize-card">
         <div class="summarize-meta">
@@ -1123,7 +1467,7 @@ document.getElementById('btn-summarize').addEventListener('click', async () => {
       </div>`;
   } catch (e) {
     brainError('summarize-result', e.detail || String(e));
-    toast('Summarize fallito', 'error');
+    toast(ui('toastSumErr'), 'error');
   } finally {
     restore();
   }
@@ -1142,4 +1486,73 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
    BOOT
    ═══════════════════════════════════════════════════════════ */
 
-checkConnection();
+/* ═══════════════════════════════════════════════════════════
+   RESPONSIVE — hamburger + sidebar drawer
+   ═══════════════════════════════════════════════════════════ */
+
+(function initResponsive() {
+  const sidebar     = document.getElementById('sidebar');
+  const overlay     = document.getElementById('sidebar-overlay');
+  const burgerTop   = document.getElementById('hamburger-top');
+  const burgerSide  = document.getElementById('hamburger');
+  const topbarDot   = document.getElementById('topbar-dot');
+  const topbarLabel = document.getElementById('topbar-label');
+
+  function openSidebar() {
+    sidebar.classList.add('open');
+    overlay.classList.add('visible');
+    [burgerTop, burgerSide].forEach(b => {
+      if (b) { b.classList.add('open'); b.setAttribute('aria-expanded','true'); }
+    });
+  }
+  function closeSidebar() {
+    sidebar.classList.remove('open');
+    overlay.classList.remove('visible');
+    [burgerTop, burgerSide].forEach(b => {
+      if (b) { b.classList.remove('open'); b.setAttribute('aria-expanded','false'); }
+    });
+  }
+
+  burgerTop?.addEventListener('click', () =>
+    sidebar.classList.contains('open') ? closeSidebar() : openSidebar());
+  burgerSide?.addEventListener('click', () =>
+    sidebar.classList.contains('open') ? closeSidebar() : openSidebar());
+  overlay?.addEventListener('click', closeSidebar);
+
+  // Close when a nav item is picked on mobile
+  document.querySelectorAll('.nav-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (window.matchMedia('(max-width: 900px)').matches) closeSidebar();
+    });
+  });
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeSidebar();
+  });
+
+  // Mirror server status dot → topbar
+  const mainDot   = document.getElementById('status-dot');
+  const mainLabel = document.getElementById('status-label');
+  if (topbarDot && mainDot) {
+    new MutationObserver(() => {
+      topbarDot.className    = mainDot.className;
+      topbarLabel.textContent = mainLabel.textContent;
+    }).observe(mainDot,   { attributes: true });
+    new MutationObserver(() => {
+      topbarLabel.textContent = mainLabel.textContent;
+    }).observe(mainLabel, { childList: true, subtree: true, characterData: true });
+  }
+})();
+
+document.addEventListener('DOMContentLoaded', () => {
+  // Language buttons
+  document.querySelectorAll('.lang-btn').forEach(btn => {
+    btn.addEventListener('click', () => setLang(btn.dataset.lang));
+  });
+
+  // Apply saved/default language — builds all feeling selects from scratch
+  setLang(_lang);
+
+  // Server connection
+  checkConnection();
+});

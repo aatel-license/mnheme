@@ -11,6 +11,21 @@
 <!-- Scanlines overlay -->
 <div class="scanlines" aria-hidden="true"></div>
 
+<!-- Sidebar overlay (mobile) -->
+<div id="sidebar-overlay"></div>
+
+<!-- ═══════════════ TOPBAR (mobile) ═══════════════ -->
+<div class="topbar" id="topbar">
+  <button class="hamburger" id="hamburger-top" aria-label="Toggle menu" aria-expanded="false">
+    <span></span><span></span><span></span>
+  </button>
+  <span class="topbar-logo">MNHEME</span>
+  <div class="topbar-status">
+    <span class="status-dot" id="topbar-dot"></span>
+    <span id="topbar-label">–</span>
+  </div>
+</div>
+
 <!-- ═══════════════ SIDEBAR ═══════════════ -->
 <aside id="sidebar">
 
@@ -22,6 +37,9 @@
     </div>
     <div class="logo-text">MNHEME</div>
     <div class="logo-sub">API CONSOLE</div>
+    <button class="hamburger" id="hamburger" aria-label="Toggle menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
   </div>
 
   <div class="server-status" id="server-status">
@@ -35,8 +53,16 @@
     <button id="btn-connect">Connect</button>
   </div>
 
+
+  <div class="lang-selector">
+    <button class="lang-btn active" data-lang="en">EN</button>
+    <button class="lang-btn" data-lang="it">IT</button>
+    <button class="lang-btn" data-lang="es">ES</button>
+    <button class="lang-btn" data-lang="zh">中文</button>
+  </div>
+
   <nav class="nav-sections">
-    <div class="nav-group-label">Memory</div>
+    <div class="nav-group-label" data-i18n="navMemory">Memory</div>
     <button class="nav-btn active" data-view="new-memory">
       <span class="nav-icon">✦</span> New Memory
     </button>
@@ -47,7 +73,7 @@
       <span class="nav-icon">⌕</span> Search
     </button>
 
-    <div class="nav-group-label">Explore</div>
+    <div class="nav-group-label" data-i18n="navExplore">Explore</div>
     <button class="nav-btn" data-view="concepts">
       <span class="nav-icon">◎</span> Concepts
     </button>
@@ -58,7 +84,7 @@
       <span class="nav-icon">⟿</span> Timeline
     </button>
 
-    <div class="nav-group-label">System</div>
+    <div class="nav-group-label" data-i18n="navSystem">System</div>
     <button class="nav-btn" data-view="stats">
       <span class="nav-icon">▣</span> Stats
     </button>
@@ -66,7 +92,7 @@
       <span class="nav-icon">↗</span> Export
     </button>
 
-    <div class="nav-group-label">Brain · LLM</div>
+    <div class="nav-group-label" data-i18n="navBrain">Brain · LLM</div>
     <button class="nav-btn" data-view="perceive">
       <span class="nav-icon">◈</span> Perceive
     </button>
@@ -112,52 +138,36 @@
   <!-- ── NEW MEMORY ── -->
   <section class="view active" id="view-new-memory">
     <div class="view-header">
-      <h1>New Memory</h1>
-      <p class="view-desc">Append a new immutable memory to the database.</p>
+      <h1 data-i18n="titleNewMemory">New Memory</h1>
+      <p class="view-desc" data-i18n="descNewMemory">Append a new immutable memory to the database.</p>
     </div>
 
     <div class="form-card">
       <div class="form-row">
         <div class="field">
-          <label>Concept <span class="required">*</span></label>
-          <input type="text" id="new-concept" placeholder="Debt, Family, Work…" autocomplete="off">
+          <label data-i18n-label="labelConcept"><span data-i18n="labelConcept">Concept</span> <span class="required">*</span></label>
+          <input type="text" id="new-concept" placeholder="" data-i18n-ph="phConcept" autocomplete="off">
         </div>
         <div class="field">
-          <label>Feeling <span class="required">*</span></label>
-          <select id="new-feeling">
-            <option value="">— select —</option>
-            <option value="gioia">✨ Joy</option>
-            <option value="tristezza">🌧 Sadness</option>
-            <option value="rabbia">🔥 Anger</option>
-            <option value="paura">🌑 Fear</option>
-            <option value="nostalgia">🍂 Nostalgia</option>
-            <option value="amore">❤ Love</option>
-            <option value="malinconia">🌊 Melancholy</option>
-            <option value="serenità">🌿 Serenity</option>
-            <option value="sorpresa">⚡ Surprise</option>
-            <option value="ansia">🌀 Anxiety</option>
-            <option value="gratitudine">✿ Gratitude</option>
-            <option value="vergogna">◈ Shame</option>
-            <option value="orgoglio">▲ Pride</option>
-            <option value="noia">— Boredom</option>
-            <option value="curiosità">◎ Curiosity</option>
+          <label data-i18n-label="labelFeeling"><span data-i18n="labelFeeling">Feeling</span> <span class="required">*</span></label>
+          <select id="new-feeling" class="feeling-select" data-mode="select">
           </select>
         </div>
       </div>
 
       <div class="field">
-        <label>Content <span class="required">*</span></label>
-        <textarea id="new-content" rows="4" placeholder="Write the memory…"></textarea>
+        <label data-i18n-label="labelContent"><span data-i18n="labelContent">Content</span> <span class="required">*</span></label>
+        <textarea id="new-content" rows="4" placeholder="" data-i18n-ph="phContent"></textarea>
         <div class="char-count" id="char-count">0 chars</div>
       </div>
 
       <div class="form-row">
         <div class="field">
-          <label>Note <span class="optional">optional</span></label>
-          <input type="text" id="new-note" placeholder="Context, annotations…">
+          <label data-i18n-label="labelNote"><span data-i18n="labelNote">Note</span> <span class="optional" data-i18n="optOptional">optional</span></label>
+          <input type="text" id="new-note" placeholder="" data-i18n-ph="phNote">
         </div>
         <div class="field">
-          <label>Media type</label>
+          <label data-i18n="labelMediaType">Media type</label>
           <select id="new-mediatype">
             <option value="text">TEXT</option>
             <option value="image">IMAGE</option>
@@ -169,8 +179,8 @@
       </div>
 
       <div class="field">
-        <label>Tags <span class="optional">comma separated</span></label>
-        <input type="text" id="new-tags" placeholder="house, 2024, urgent…">
+        <label data-i18n-label="labelTags"><span data-i18n="labelTags">Tags</span> <span class="optional" data-i18n="optCommaSep">comma separated</span></label>
+        <input type="text" id="new-tags" placeholder="" data-i18n-ph="phTags">
         <div class="tag-preview" id="tag-preview"></div>
       </div>
 
@@ -178,7 +188,7 @@
         <button class="btn-primary" id="btn-remember">
           <span class="btn-icon">✦</span> Remember
         </button>
-        <button class="btn-ghost" id="btn-clear">Clear</button>
+        <button class="btn-ghost" id="btn-clear" data-i18n="btnClear">Clear</button>
       </div>
     </div>
 
@@ -188,44 +198,28 @@
   <!-- ── BROWSE ── -->
   <section class="view" id="view-browse">
     <div class="view-header">
-      <h1>Browse Memories</h1>
-      <p class="view-desc">Retrieve memories with optional filters.</p>
+      <h1 data-i18n="titleBrowse">Browse Memories</h1>
+      <p class="view-desc" data-i18n="descBrowse">Retrieve memories with optional filters.</p>
     </div>
 
     <div class="filter-bar">
       <div class="filter-group">
-        <label>Feeling filter</label>
-        <select id="browse-feeling">
-          <option value="">All feelings</option>
-          <option value="gioia">Joy</option>
-          <option value="tristezza">Sadness</option>
-          <option value="rabbia">Anger</option>
-          <option value="paura">Fear</option>
-          <option value="nostalgia">Nostalgia</option>
-          <option value="amore">Love</option>
-          <option value="malinconia">Melancholy</option>
-          <option value="serenità">Serenity</option>
-          <option value="sorpresa">Surprise</option>
-          <option value="ansia">Anxiety</option>
-          <option value="gratitudine">Gratitude</option>
-          <option value="vergogna">Shame</option>
-          <option value="orgoglio">Pride</option>
-          <option value="noia">Boredom</option>
-          <option value="curiosità">Curiosity</option>
-        </select>
+        <label data-i18n="labelFeelingFilter">Feeling filter</label>
+        <select id="browse-feeling" class="feeling-select" data-mode="all">
+          </select>
       </div>
       <div class="filter-group">
-        <label>Limit</label>
+        <label data-i18n="labelLimit">Limit</label>
         <input type="number" id="browse-limit" value="20" min="1" max="500">
       </div>
       <div class="filter-group">
-        <label>Order</label>
+        <label data-i18n="labelOrder">Order</label>
         <select id="browse-order">
-          <option value="false">Newest first</option>
-          <option value="true">Oldest first</option>
+          <option value="false" data-i18n="optNewest">Newest first</option>
+          <option value="true" data-i18n="optOldest">Oldest first</option>
         </select>
       </div>
-      <button class="btn-primary" id="btn-browse">Fetch</button>
+      <button class="btn-primary" id="btn-browse" data-i18n="btnFetch">Fetch</button>
     </div>
 
     <div class="memories-grid" id="browse-results"></div>
@@ -234,20 +228,20 @@
   <!-- ── SEARCH ── -->
   <section class="view" id="view-search">
     <div class="view-header">
-      <h1>Search</h1>
-      <p class="view-desc">Full-text search via inverted index — O(k).</p>
+      <h1 data-i18n="titleSearch">Search</h1>
+      <p class="view-desc" data-i18n="descSearch">Full-text search via inverted index — O(k).</p>
     </div>
 
     <div class="search-bar">
-      <input type="text" id="search-query" placeholder="Type to search memories…" autocomplete="off">
+      <input type="text" id="search-query" placeholder="" data-i18n-ph="phSearch" autocomplete="off">
       <input type="number" id="search-limit" value="20" min="1" max="200" title="limit">
-      <button class="btn-primary" id="btn-search">Search</button>
+      <button class="btn-primary" id="btn-search" data-i18n="btnSearch">Search</button>
     </div>
 
     <div class="tag-search-row">
-      <span class="tag-search-label">By tag:</span>
+      <span class="tag-search-label" data-i18n="labelByTag">By tag:</span>
       <input type="text" id="tag-query" placeholder="casa, lavoro, urgente…">
-      <button class="btn-ghost" id="btn-tag-search">Tag search</button>
+      <button class="btn-ghost" id="btn-tag-search" data-i18n="btnTagSearch">Tag search</button>
     </div>
 
     <div class="memories-grid" id="search-results"></div>
@@ -256,12 +250,12 @@
   <!-- ── CONCEPTS ── -->
   <section class="view" id="view-concepts">
     <div class="view-header">
-      <h1>Concepts</h1>
-      <p class="view-desc">All conceptual keys with emotional distribution.</p>
+      <h1 data-i18n="titleConcepts">Concepts</h1>
+      <p class="view-desc" data-i18n="descConcepts">All conceptual keys with emotional distribution.</p>
     </div>
 
     <div class="filter-bar">
-      <button class="btn-primary" id="btn-load-concepts">Load concepts</button>
+      <button class="btn-primary" id="btn-load-concepts" data-i18n="btnLoadConcepts">Load concepts</button>
     </div>
 
     <div id="concepts-list"></div>
@@ -270,35 +264,19 @@
     <div class="detail-panel" id="concept-detail" style="display:none">
       <div class="detail-header">
         <h2 id="detail-concept-name"></h2>
-        <button class="btn-ghost btn-sm" id="btn-close-detail">✕ Close</button>
+        <button class="btn-ghost btn-sm" id="btn-close-detail" data-i18n="btnClose">✕ Close</button>
       </div>
       <div class="filter-bar" style="margin-top:0">
         <div class="filter-group">
-          <label>Filter feeling</label>
-          <select id="detail-feeling">
-            <option value="">All</option>
-            <option value="gioia">Joy</option>
-            <option value="tristezza">Sadness</option>
-            <option value="rabbia">Anger</option>
-            <option value="paura">Fear</option>
-            <option value="nostalgia">Nostalgia</option>
-            <option value="amore">Love</option>
-            <option value="malinconia">Melancholy</option>
-            <option value="serenità">Serenity</option>
-            <option value="sorpresa">Surprise</option>
-            <option value="ansia">Anxiety</option>
-            <option value="gratitudine">Gratitude</option>
-            <option value="vergogna">Shame</option>
-            <option value="orgoglio">Pride</option>
-            <option value="noia">Boredom</option>
-            <option value="curiosità">Curiosity</option>
+          <label data-i18n="labelFilterFeeling">Filter feeling</label>
+          <select id="detail-feeling" class="feeling-select" data-mode="all2">
           </select>
         </div>
         <div class="filter-group">
           <label>Limit</label>
           <input type="number" id="detail-limit" value="20" min="1">
         </div>
-        <button class="btn-primary" id="btn-detail-fetch">Fetch memories</button>
+        <button class="btn-primary" id="btn-detail-fetch" data-i18n="btnFetchMemories">Fetch memories</button>
       </div>
       <div class="memories-grid" id="detail-results"></div>
     </div>
@@ -307,12 +285,12 @@
   <!-- ── FEELINGS ── -->
   <section class="view" id="view-feelings">
     <div class="view-header">
-      <h1>Feelings</h1>
-      <p class="view-desc">Emotional distribution across the entire database.</p>
+      <h1 data-i18n="titleFeelings">Feelings</h1>
+      <p class="view-desc" data-i18n="descFeelings">Emotional distribution across the entire database.</p>
     </div>
 
     <div class="filter-bar">
-      <button class="btn-primary" id="btn-load-feelings">Load distribution</button>
+      <button class="btn-primary" id="btn-load-feelings" data-i18n="btnLoadDist">Load distribution</button>
     </div>
 
     <div id="feelings-chart"></div>
@@ -322,16 +300,16 @@
   <!-- ── TIMELINE ── -->
   <section class="view" id="view-timeline">
     <div class="view-header">
-      <h1>Timeline</h1>
-      <p class="view-desc">Emotional arc of a concept over time.</p>
+      <h1 data-i18n="titleTimeline">Timeline</h1>
+      <p class="view-desc" data-i18n="descTimeline">Emotional arc of a concept over time.</p>
     </div>
 
     <div class="filter-bar">
       <div class="filter-group" style="flex:1">
-        <label>Concept</label>
+        <label data-i18n="labelConcept2">Concept</label>
         <input type="text" id="timeline-concept" placeholder="Debt, Family, Work…">
       </div>
-      <button class="btn-primary" id="btn-load-timeline">Load timeline</button>
+      <button class="btn-primary" id="btn-load-timeline" data-i18n="btnLoadTimeline">Load timeline</button>
     </div>
 
     <div id="timeline-result"></div>
@@ -340,12 +318,12 @@
   <!-- ── STATS ── -->
   <section class="view" id="view-stats">
     <div class="view-header">
-      <h1>Stats</h1>
-      <p class="view-desc">General database statistics and storage info.</p>
+      <h1 data-i18n="titleStats">Stats</h1>
+      <p class="view-desc" data-i18n="descStats">General database statistics and storage info.</p>
     </div>
 
     <div class="filter-bar">
-      <button class="btn-primary" id="btn-load-stats">Refresh stats</button>
+      <button class="btn-primary" id="btn-load-stats" data-i18n="btnRefreshStats">Refresh stats</button>
     </div>
 
     <div id="stats-grid"></div>
@@ -354,47 +332,31 @@
   <!-- ── EXPORT ── -->
   <section class="view" id="view-export">
     <div class="view-header">
-      <h1>Export</h1>
-      <p class="view-desc">Export memories as JSON with optional filters.</p>
+      <h1 data-i18n="titleExport">Export</h1>
+      <p class="view-desc" data-i18n="descExport">Export memories as JSON with optional filters.</p>
     </div>
 
     <div class="form-card">
       <div class="form-row">
         <div class="field">
-          <label>Concept filter</label>
-          <input type="text" id="export-concept" placeholder="All concepts if empty">
+          <label data-i18n="labelConceptFilter">Concept filter</label>
+          <input type="text" id="export-concept" placeholder="" data-i18n-ph="phConceptFilter">
         </div>
         <div class="field">
-          <label>Feeling filter</label>
-          <select id="export-feeling">
-            <option value="">All feelings</option>
-            <option value="gioia">Joy</option>
-            <option value="tristezza">Sadness</option>
-            <option value="rabbia">Anger</option>
-            <option value="paura">Fear</option>
-            <option value="nostalgia">Nostalgia</option>
-            <option value="amore">Love</option>
-            <option value="malinconia">Melancholy</option>
-            <option value="serenità">Serenity</option>
-            <option value="sorpresa">Surprise</option>
-            <option value="ansia">Anxiety</option>
-            <option value="gratitudine">Gratitude</option>
-            <option value="vergogna">Shame</option>
-            <option value="orgoglio">Pride</option>
-            <option value="noia">Boredom</option>
-            <option value="curiosità">Curiosity</option>
+          <label data-i18n="labelFeelingFilter">Feeling filter</label>
+          <select id="export-feeling" class="feeling-select" data-mode="all">
           </select>
         </div>
       </div>
       <div class="field">
         <label class="toggle-label">
           <input type="checkbox" id="export-content" checked>
-          <span>Include content field</span>
+          <span data-i18n="labelIncludeContent">Include content field</span>
         </label>
       </div>
       <div class="form-actions">
-        <button class="btn-primary" id="btn-export">Export JSON</button>
-        <button class="btn-ghost" id="btn-download">Download file</button>
+        <button class="btn-primary" id="btn-export" data-i18n="btnExportJSON">Export JSON</button>
+        <button class="btn-ghost" id="btn-download" data-i18n="btnDownload">Download file</button>
       </div>
     </div>
 
@@ -412,44 +374,28 @@
   <section class="view" id="view-perceive">
     <div class="view-header">
       <h1 class="brain-title">Perceive</h1>
-      <p class="view-desc">Input grezzo → LLM estrae concept, feeling, tags e arricchisce il contenuto.</p>
+      <p class="view-desc">Raw input → LLM extracts concept, feeling, tags and enriches the content.</p>
     </div>
     <div id="brain-status-perceive" class="brain-bar"></div>
     <div class="form-card">
       <div class="field">
-        <label>Input grezzo <span class="required">*</span></label>
-        <textarea id="perceive-input" rows="4" placeholder="Scrivi liberamente un pensiero, evento, emozione…"></textarea>
+        <label data-i18n-label="labelRawInput"><span data-i18n="labelRawInput">Raw input</span> <span class="required">*</span></label>
+        <textarea id="perceive-input" rows="4" placeholder="" data-i18n-ph="phRawInput"></textarea>
       </div>
       <div class="form-row">
         <div class="field">
-          <label>Concept <span class="optional">override LLM</span></label>
+          <label data-i18n-label="labelConceptOverride"><span data-i18n="labelConcept3">Concept</span> <span class="optional" data-i18n="optOverrideLLM">override LLM</span></label>
           <input type="text" id="perceive-concept" placeholder="auto">
         </div>
         <div class="field">
           <label>Feeling <span class="optional">override LLM</span></label>
-          <select id="perceive-feeling">
-            <option value="">auto</option>
-            <option value="gioia">✨ Joy</option>
-            <option value="tristezza">🌧 Sadness</option>
-            <option value="rabbia">🔥 Anger</option>
-            <option value="paura">🌑 Fear</option>
-            <option value="nostalgia">🍂 Nostalgia</option>
-            <option value="amore">❤ Love</option>
-            <option value="malinconia">🌊 Melancholy</option>
-            <option value="serenità">🌿 Serenity</option>
-            <option value="sorpresa">⚡ Surprise</option>
-            <option value="ansia">🌀 Anxiety</option>
-            <option value="gratitudine">✿ Gratitude</option>
-            <option value="vergogna">◈ Shame</option>
-            <option value="orgoglio">▲ Pride</option>
-            <option value="noia">— Boredom</option>
-            <option value="curiosità">◎ Curiosity</option>
+          <select id="perceive-feeling" class="feeling-select" data-mode="auto">
           </select>
         </div>
       </div>
       <div class="field">
-        <label>Note <span class="optional">opzionale</span></label>
-        <input type="text" id="perceive-note" placeholder="Annotazione manuale…">
+        <label data-i18n-label="labelNote"><span data-i18n="labelNote">Note</span> <span class="optional" data-i18n="optOptional">optional</span></label>
+        <input type="text" id="perceive-note" placeholder="" data-i18n-ph="phNote">
       </div>
       <div class="form-actions">
         <button class="btn-brain" id="btn-perceive">
@@ -464,17 +410,17 @@
   <section class="view" id="view-ask">
     <div class="view-header">
       <h1 class="brain-title">Ask</h1>
-      <p class="view-desc">RAG su memoria personale — risponde usando solo i tuoi ricordi reali come contesto.</p>
+      <p class="view-desc">Personal memory RAG — answers using only your real memories as context.</p>
     </div>
     <div id="brain-status-ask" class="brain-bar"></div>
     <div class="form-card">
       <div class="field">
-        <label>Domanda <span class="required">*</span></label>
-        <textarea id="ask-question" rows="3" placeholder="Come mi sento rispetto al denaro? C'è qualcosa di irrisolto con la famiglia?"></textarea>
+        <label data-i18n-label="labelQuestion"><span data-i18n="labelQuestion">Question</span> <span class="required">*</span></label>
+        <textarea id="ask-question" rows="3" placeholder="" data-i18n-ph="phQuestion"></textarea>
       </div>
       <div class="form-row">
         <div class="field">
-          <label>Max memories</label>
+          <label data-i18n="labelMaxMemories">Max memories</label>
           <input type="number" id="ask-max" value="15" min="1" max="50">
         </div>
       </div>
@@ -491,13 +437,13 @@
   <section class="view" id="view-reflect">
     <div class="view-header">
       <h1 class="brain-title">Reflect</h1>
-      <p class="view-desc">Analisi dell'evoluzione emotiva di un concetto nel tempo — arco narrativo e pattern.</p>
+      <p class="view-desc">Emotional arc of a concept over time — narrative arc and patterns.</p>
     </div>
     <div id="brain-status-reflect" class="brain-bar"></div>
     <div class="filter-bar">
       <div class="filter-group" style="flex:1">
-        <label>Concept</label>
-        <input type="text" id="reflect-concept" placeholder="Debito, Famiglia, Lavoro…">
+        <label data-i18n="labelConcept4">Concept</label>
+        <input type="text" id="reflect-concept" placeholder="" data-i18n-ph="phConcept">
       </div>
       <button class="btn-brain" id="btn-reflect">
         <span class="btn-icon">⟳</span> Reflect
@@ -510,12 +456,12 @@
   <section class="view" id="view-dream">
     <div class="view-header">
       <h1 class="brain-title">Dream</h1>
-      <p class="view-desc">Associazione libera — trova il filo nascosto tra ricordi distanti. Simula il consolidamento onirico.</p>
+      <p class="view-desc">Free association — finds the hidden thread between distant memories.</p>
     </div>
     <div id="brain-status-dream" class="brain-bar"></div>
     <div class="filter-bar">
       <div class="filter-group">
-        <label>Memories to sample</label>
+        <label data-i18n="labelMemSample">Memories to sample</label>
         <input type="number" id="dream-n" value="8" min="2" max="20">
       </div>
       <button class="btn-brain" id="btn-dream">
@@ -529,7 +475,7 @@
   <section class="view" id="view-introspect">
     <div class="view-header">
       <h1 class="brain-title">Introspect</h1>
-      <p class="view-desc">Ritratto psicologico completo — pattern, tensioni, risorse, frase essenziale.</p>
+      <p class="view-desc">Full psychological portrait — patterns, unresolved tensions, resources.</p>
     </div>
     <div id="brain-status-introspect" class="brain-bar"></div>
     <div class="filter-bar">
@@ -544,42 +490,29 @@
   <section class="view" id="view-summarize">
     <div class="view-header">
       <h1 class="brain-title">Summarize</h1>
-      <p class="view-desc">Riassume un gruppo di ricordi — stile narrativo, analitico o poetico.</p>
+      <p class="view-desc">Summarises a group of memories in narrative, analytical or poetic style.</p>
     </div>
     <div id="brain-status-summarize" class="brain-bar"></div>
     <div class="form-card">
       <div class="form-row">
         <div class="field">
-          <label>Concept <span class="optional">opzionale</span></label>
-          <input type="text" id="sum-concept" placeholder="Tutti i concetti">
+          <label data-i18n-label="labelConceptOpt"><span data-i18n="labelConcept5">Concept</span> <span class="optional" data-i18n="optOptional">optional</span></label>
+          <input type="text" id="sum-concept" placeholder="" data-i18n-ph="phAllConcepts">
         </div>
         <div class="field">
-          <label>Feeling <span class="optional">opzionale</span></label>
-          <select id="sum-feeling">
-            <option value="">Tutti</option>
-            <option value="gioia">Joy</option>
-            <option value="tristezza">Sadness</option>
-            <option value="nostalgia">Nostalgia</option>
-            <option value="amore">Love</option>
-            <option value="ansia">Anxiety</option>
-            <option value="paura">Fear</option>
-            <option value="orgoglio">Pride</option>
-            <option value="malinconia">Melancholy</option>
-            <option value="serenità">Serenity</option>
+          <label data-i18n-label="labelFeelingOpt"><span data-i18n="labelFeeling2">Feeling</span> <span class="optional" data-i18n="optOptional">optional</span></label>
+          <select id="sum-feeling" class="feeling-select" data-mode="all2">
           </select>
         </div>
       </div>
       <div class="form-row">
         <div class="field">
-          <label>Style</label>
-          <select id="sum-style">
-            <option value="narrativo">Narrativo</option>
-            <option value="analitico">Analitico</option>
-            <option value="poetico">Poetico</option>
+          <label data-i18n="labelStyle">Style</label>
+          <select id="sum-style" class="style-select">
           </select>
         </div>
         <div class="field">
-          <label>Max memories</label>
+          <label data-i18n="labelMaxMemories">Max memories</label>
           <input type="number" id="sum-limit" value="20" min="1" max="100">
         </div>
       </div>
@@ -597,8 +530,8 @@
 <!-- ═══════════════ REQUEST LOG ═══════════════ -->
 <div id="req-log-panel">
   <div class="req-log-header">
-    <span>Request log</span>
-    <button id="btn-clear-log">clear</button>
+    <span data-i18n="labelReqLog">Request log</span>
+    <button id="btn-clear-log" data-i18n="btnClearLog">clear</button>
   </div>
   <div id="req-log-entries"></div>
 </div>
