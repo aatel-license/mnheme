@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { FEELINGS, FEELING_LABELS } from '../core/constants';
 import { useMemoryDB } from '../hooks/useMemoryDB';
 import MemoryCard from './MemoryCard';
+import SectionGuide from './SectionGuide';
 
 export default function Remember() {
   const { remember, refresh } = useMemoryDB();
@@ -49,6 +50,23 @@ export default function Remember() {
 
   return (
     <div>
+      <SectionGuide title="Come funziona Remember?">
+        <p>
+          <strong>Remember</strong> ti permette di creare un ricordo manualmente,
+          senza l'aiuto dell'IA. Sei tu a scegliere ogni dettaglio.
+        </p>
+        <ol className="guide-steps">
+          <li>Scegli un <strong>concetto</strong> (es. "Famiglia", "Viaggio") &mdash; è la categoria del ricordo</li>
+          <li>Seleziona il <strong>sentimento</strong> che meglio descrive come ti senti</li>
+          <li>Scrivi il <strong>contenuto</strong> del ricordo</li>
+          <li>Opzionalmente, aggiungi una nota di contesto e dei tag per organizzarlo</li>
+        </ol>
+        <div className="guide-note">
+          A differenza di Perceive, qui non c'è arricchimento da parte dell'IA.
+          Il ricordo viene salvato esattamente come lo scrivi. Utile quando vuoi avere il controllo totale.
+        </div>
+      </SectionGuide>
+
       <form onSubmit={handleSubmit} className="form-card">
         <div className="form-row">
           <div className="field">

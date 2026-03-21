@@ -1169,3 +1169,143 @@ input[type="file"] {
     font-size: 22px;
   }
 }
+
+/* ===================================================================
+   Section Guide Component
+   =================================================================== */
+.section-guide {
+  margin-bottom: 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--card-radius);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.section-guide-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px 16px;
+  border: none;
+  background: var(--accent-bg);
+  color: var(--accent);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+  transition: background var(--transition-speed);
+}
+.section-guide-toggle:hover {
+  background: var(--accent-bg2);
+}
+
+.section-guide-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--btn-text);
+  font-family: var(--font-heading);
+  font-size: 13px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.section-guide-chevron {
+  margin-left: auto;
+  font-size: 12px;
+  transition: transform 0.2s;
+}
+.section-guide-chevron.open {
+  transform: rotate(180deg);
+}
+
+.section-guide-body {
+  padding: 16px 20px;
+  font-size: 13px;
+  line-height: 1.75;
+  color: var(--text2);
+  border-top: 1px solid var(--border);
+  animation: guideSlideIn 0.2s ease-out;
+}
+
+@keyframes guideSlideIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.section-guide-body p {
+  margin-bottom: 10px;
+}
+.section-guide-body p:last-child {
+  margin-bottom: 0;
+}
+
+.section-guide-body strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.section-guide-body em {
+  color: var(--accent);
+  font-style: italic;
+}
+
+.guide-steps {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0;
+  counter-reset: guide-step;
+}
+.guide-steps li {
+  counter-increment: guide-step;
+  padding: 6px 0 6px 32px;
+  position: relative;
+}
+.guide-steps li::before {
+  content: counter(guide-step);
+  position: absolute;
+  left: 0;
+  top: 6px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--accent-bg);
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.guide-note {
+  margin-top: 10px;
+  padding: 10px 14px;
+  background: var(--accent-bg);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 var(--card-radius) var(--card-radius) 0;
+  font-size: 12px;
+  color: var(--accent);
+}
+
+.guide-feelings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0;
+}
+.guide-feeling-chip {
+  padding: 2px 10px;
+  border-radius: 20px;
+  background: var(--accent-bg);
+  color: var(--text2);
+  font-size: 11px;
+  font-family: var(--font-mono);
+}

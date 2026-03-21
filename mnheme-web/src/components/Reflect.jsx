@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useBrain } from '../hooks/useBrain';
 import { useMemoryDB } from '../hooks/useMemoryDB';
+import SectionGuide from './SectionGuide';
 
 export default function Reflect() {
   const { listConcepts } = useMemoryDB();
@@ -23,6 +24,22 @@ export default function Reflect() {
 
   return (
     <div>
+      <SectionGuide title="Come funziona Reflect?">
+        <p>
+          <strong>Reflect</strong> analizza come le tue emozioni verso un concetto si sono evolute nel tempo.
+          È il tuo motore di introspezione personale.
+        </p>
+        <ol className="guide-steps">
+          <li>Scegli un concetto dal tuo diario (es. <em>"Famiglia"</em>, <em>"Lavoro"</em>)</li>
+          <li>Il sistema recupera tutti i ricordi legati a quel concetto, dal più vecchio al più recente</li>
+          <li>Ricostruisce la sequenza emotiva nel tempo (es. rabbia &rarr; tristezza &rarr; serenità)</li>
+          <li>L'IA analizza i pattern ricorrenti, cosa resta irrisolto e il significato psicologico del percorso</li>
+        </ol>
+        <div className="guide-note">
+          Il risultato include un "arco emotivo" &mdash; un breve riassunto di come è cambiato il tuo rapporto con quel concetto. Reflect non modifica nulla: è solo lettura e analisi.
+        </div>
+      </SectionGuide>
+
       <form onSubmit={handleSubmit} className="form-card">
         <div className="form-row">
           <div className="field">

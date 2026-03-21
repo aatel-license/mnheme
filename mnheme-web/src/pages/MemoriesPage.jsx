@@ -3,6 +3,7 @@ import { FEELINGS, FEELING_LABELS } from '../core/constants';
 import { useMemoryDB } from '../hooks/useMemoryDB';
 import MemoryList from '../components/MemoryList';
 import Search from '../components/Search';
+import SectionGuide from '../components/SectionGuide';
 
 export default function MemoriesPage() {
   const { recallAll, recallByFeeling, recall, revision } = useMemoryDB();
@@ -32,6 +33,24 @@ export default function MemoriesPage() {
         <h1>Memories</h1>
         <p className="view-desc">Esplora, filtra e cerca nei ricordi.</p>
       </div>
+
+      <SectionGuide title="Come esplorare i ricordi?">
+        <p>
+          Questa sezione ti permette di sfogliare e cercare in tutti i tuoi ricordi.
+        </p>
+        <p>
+          <strong>Browse</strong> &mdash; Filtra i ricordi per concetto, sentimento o entrambi.
+          Puoi scegliere l'ordine (più recenti o più vecchi prima) e il numero massimo di risultati.
+        </p>
+        <p>
+          <strong>Search</strong> &mdash; Cerca parole specifiche nel contenuto dei ricordi
+          usando la ricerca full-text, oppure cerca per tag specifico.
+        </p>
+        <div className="guide-note">
+          Tutti i ricordi sono immutabili: una volta scritti, non possono essere modificati o cancellati.
+          Questo riflette il principio di MNHEME &mdash; la memoria si stratifica, non si sovrascrive.
+        </div>
+      </SectionGuide>
 
       <div className="tab-bar">
         <button className={`tab-btn ${tab === 'browse' ? 'active' : ''}`} onClick={() => setTab('browse')}>

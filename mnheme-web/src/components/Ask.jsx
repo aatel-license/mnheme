@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useBrain } from '../hooks/useBrain';
 import MemoryList from './MemoryList';
+import SectionGuide from './SectionGuide';
 
 export default function Ask() {
   const [question, setQuestion] = useState('');
@@ -20,6 +21,22 @@ export default function Ask() {
 
   return (
     <div>
+      <SectionGuide title="Come funziona Ask?">
+        <p>
+          <strong>Ask</strong> risponde alle tue domande cercando nei tuoi ricordi.
+          Funziona come un motore di ricerca intelligente sulla tua memoria personale.
+        </p>
+        <ol className="guide-steps">
+          <li>Scrivi una domanda (es. <em>"Come mi sento rispetto al denaro?"</em>)</li>
+          <li>L'IA estrae le parole chiave e i concetti dalla domanda</li>
+          <li>Cerca i ricordi più rilevanti nel tuo diario (fino a 15)</li>
+          <li>Genera una risposta basata <strong>esclusivamente</strong> sui tuoi ricordi reali</li>
+        </ol>
+        <div className="guide-note">
+          Ogni risposta include un livello di certezza (alta, media, bassa) e la lista dei ricordi usati come fonte. Ask non inventa nulla: se non hai ricordi su un argomento, te lo dirà.
+        </div>
+      </SectionGuide>
+
       <form onSubmit={handleSubmit} className="form-card">
         <div className="field">
           <label>DOMANDA (RAG)</label>
