@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>MNHEME — API Console</title>
   <link rel="stylesheet" href="api.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
 </head>
 <body>
 
@@ -82,6 +83,9 @@
     </button>
     <button class="nav-btn" data-view="timeline">
       <span class="nav-icon">⟿</span> <span data-i18n="navTimeline">Timeline</span>
+    </button>
+    <button class="nav-btn" data-view="graph">
+      <span class="nav-icon">⬡</span> <span data-i18n="navGraph">Graph</span>
     </button>
 
     <div class="nav-group-label" data-i18n="navSystem">System</div>
@@ -322,6 +326,69 @@
 
     <div id="feelings-chart"></div>
     <div id="feelings-list"></div>
+  </section>
+
+  <!-- ── GRAPH ── -->
+  <section class="view" id="view-graph">
+    <div class="view-header">
+      <h1 data-i18n="navGraph">Graph</h1>
+      <p class="view-desc">Node graph of memories — zoom, drag, filter by relation type.</p>
+    </div>
+
+    <!-- Controls bar -->
+    <div class="graph-controls">
+      <div class="graph-filter-group">
+        <span class="graph-filter-label">Link by</span>
+        <button class="graph-mode-btn active" data-mode="concept">Concept</button>
+        <button class="graph-mode-btn" data-mode="feeling">Feeling</button>
+        <button class="graph-mode-btn" data-mode="tag">Tag</button>
+        <button class="graph-mode-btn" data-mode="all">All</button>
+      </div>
+      <div class="graph-filter-group">
+        <span class="graph-filter-label">Filter feeling</span>
+        <select id="graph-feeling-filter" class="feeling-select graph-select" data-mode="all"></select>
+      </div>
+      <div class="graph-filter-group">
+        <span class="graph-filter-label">Filter concept</span>
+        <input type="text" id="graph-concept-filter" class="graph-input" placeholder="all concepts">
+      </div>
+      <div class="graph-filter-group">
+        <span class="graph-filter-label">Max nodes</span>
+        <select id="graph-limit" class="graph-select">
+          <option value="30">30</option>
+          <option value="60" selected>60</option>
+          <option value="100">100</option>
+          <option value="200">200</option>
+        </select>
+      </div>
+      <button class="btn-primary graph-btn-load" id="btn-graph-load">
+        <span class="btn-icon">⬡</span> Load graph
+      </button>
+    </div>
+
+    <!-- Legend -->
+    <div class="graph-legend" id="graph-legend"></div>
+
+    <!-- Canvas -->
+    <div class="graph-wrap" id="graph-wrap">
+      <div class="graph-empty" id="graph-empty">
+        <span class="graph-empty-icon">⬡</span>
+        <span>Click "Load graph" to render the memory network</span>
+      </div>
+      <svg id="graph-svg"></svg>
+    </div>
+
+    <!-- Tooltip -->
+    <div class="graph-tooltip" id="graph-tooltip" style="display:none"></div>
+
+    <!-- Detail panel -->
+    <div class="graph-detail" id="graph-detail" style="display:none">
+      <div class="graph-detail-header">
+        <span id="graph-detail-title"></span>
+        <button class="graph-detail-close" id="graph-detail-close">✕</button>
+      </div>
+      <div class="graph-detail-body" id="graph-detail-body"></div>
+    </div>
   </section>
 
   <!-- ── TIMELINE ── -->
