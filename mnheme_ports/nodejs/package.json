@@ -1,0 +1,14 @@
+{
+  "name": "mnheme",
+  "version": "1.0.0",
+  "description": "Human memory as a data model — append-only binary log",
+  "main": "memorydb.js",
+  "type": "commonjs",
+  "engines": { "node": ">=18.0.0" },
+  "scripts": {
+    "example": "node example.js",
+    "test": "node test.js"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}
