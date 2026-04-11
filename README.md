@@ -1,34 +1,34 @@
 # MNHEME — Human Memory Database
 ![Alt text](https://github.com/aatel-license/mnheme/blob/main/imgs/mnheme_dark.png "mnheme")
 
-# USE IT AT YOU OWN RISK
-> *"La memoria non si sovrascrive. Si stratifica."*
+# USE IT AT YOUR OWN RISK
+> *"Memory is not overwritten. It accumulates in layers."*
 
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-c4933a?style=flat-square&logo=python&logoColor=white)](https://www.python.org)
 [![Zero Dependencies](https://img.shields.io/badge/dependencies-zero-5a8f6a?style=flat-square)](https://github.com)
 [![License: AATEL](https://img.shields.io/badge/license-aatel-yellow)](LICENSE)
 [![Append Only](https://img.shields.io/badge/storage-append--only-c25444?style=flat-square)](#architecture)
 
-**MNHEME** è un database ispirato alla memoria umana: append-only, immutabile, senziente.  
-Nessun SQLite. Nessun ORM. Engine binario scritto da zero.  
-Un cervello LLM agnostico per percepire, ricordare, riflettere.
+**MNHEME** is a database inspired by human memory: append-only, immutable, sentient.  
+No SQLite. No ORM. Binary engine written from scratch.  
+An LLM-agnostic brain to perceive, remember, and reflect.
 
 ---
 
-## Perché MNHEME?
+## Why MNHEME?
 
-I database tradizionali trattano i dati come oggetti mutabili: si scrive, si aggiorna, si cancella. Ma i ricordi non funzionano così. Non puoi sovrascrivere ciò che hai vissuto — puoi solo ricordarlo in modo diverso, con un sentimento diverso, in un momento diverso.
+Traditional databases treat data as mutable objects: you write, update, delete. But memories don't work that way. You can't overwrite what you've lived through — you can only remember it differently, with a different feeling, at a different moment.
 
-MNHEME traduce questo principio in un sistema di storage:
+MNHEME translates this principle into a storage system:
 
-- **Nessun `UPDATE`** — i dati sono immutabili dopo la scrittura
-- **Nessun `DELETE`** — i ricordi si accumulano, non spariscono
-- **Ogni ricordo porta un sentimento** — non solo dati, ma emozione
-- **L'LLM è il cervello** — percepisce, associa, riflette sui dati
+- **No `UPDATE`** — data is immutable after writing
+- **No `DELETE`** — memories accumulate, they don't disappear
+- **Every memory carries a feeling** — not just data, but emotion
+- **The LLM is the brain** — it perceives, associates, reflects on the data
 
 ---
 
-## Architettura
+## Architecture
 
 ```
 ┌────────────────────────────────────────────────────┐
@@ -38,7 +38,7 @@ MNHEME traduce questo principio in un sistema di storage:
            │
   ┌────────┴────────────────────────┐
   │         LLMProvider              │
-  │  agnostico .env · 30+ provider   │
+  │  agnostic .env · 30+ providers   │
   │  rate limiting · fallback        │
   └────────┬────────────────────────┘
            │
@@ -55,17 +55,17 @@ MNHEME traduce questo principio in un sistema di storage:
   └─────────┘  └───────────┘  └────────────┘
 ```
 
-### Livelli
+### Layers
 
-| Livello | File | Responsabilità |
-|---------|------|----------------|
-| **Brain** | `brain.py` | Operazioni cognitive LLM |
-| **LLMProvider** | `llm_provider.py` | Provider agnostico da `.env` |
-| **MemoryDB** | `mnheme.py` | API pubblica del database |
-| **StorageEngine** | `storage.py` | Log binario append-only |
-| **IndexEngine** | `index.py` | Indici in RAM per lookup O(1) |
-| **FileStore** | `filestore.py` | Storage file fisici (media) |
-| **FsProbe** | `fsprobe.py` | Rilevamento filesystem live |
+| Layer | File | Responsibility |
+|-------|------|----------------|
+| **Brain** | `brain.py` | LLM cognitive operations |
+| **LLMProvider** | `llm_provider.py` | Provider agnostic via `.env` |
+| **MemoryDB** | `mnheme.py` | Public database API |
+| **StorageEngine** | `storage.py` | Append-only binary log |
+| **IndexEngine** | `index.py` | In-RAM indexes for O(1) lookup |
+| **FileStore** | `filestore.py` | Physical file storage (media) |
+| **FsProbe** | `fsprobe.py` | Live filesystem detection |
 
 ---
 
@@ -74,110 +74,110 @@ MNHEME traduce questo principio in un sistema di storage:
 ```python
 from mnheme import MemoryDB, Feeling, MediaType
 
-# Crea o apri un database
-db = MemoryDB("mente.mnheme")
+# Create or open a database
+db = MemoryDB("mind.mnheme")
 
-# Registra un ricordo — append-only, mai sovrascritto
+# Store a memory — append-only, never overwritten
 mem = db.remember(
-    concept    = "Debito",
-    feeling    = Feeling.ANSIA,
-    content    = "Ho firmato il mutuo oggi. 25 anni.",
-    note       = "Era un mercoledì piovoso.",
-    tags       = ["casa", "mutuo", "2024"],
+    concept    = "Debt",
+    feeling    = Feeling.ANXIETY,
+    content    = "I signed the mortgage today. 25 years.",
+    note       = "It was a rainy Wednesday.",
+    tags       = ["home", "mortgage", "2024"],
 )
 
-# Richiama i ricordi di un concetto
-ricordi = db.recall("Debito")
-ricordi = db.recall("Debito", feeling=Feeling.ANSIA)
-ricordi = db.recall("Debito", limit=5, oldest_first=True)
+# Recall memories for a concept
+memories = db.recall("Debt")
+memories = db.recall("Debt", feeling=Feeling.ANXIETY)
+memories = db.recall("Debt", limit=5, oldest_first=True)
 
-# Richiama per sentimento
-tutti_i_nostalgici = db.recall_by_feeling(Feeling.NOSTALGIA)
+# Recall by feeling
+all_nostalgic = db.recall_by_feeling(Feeling.NOSTALGIA)
 
-# Ricerca full-text
-results = db.search("mutuo")
-results = db.search("natale", in_concept=False)
+# Full-text search
+results = db.search("mortgage")
+results = db.search("christmas", in_concept=False)
 
-# Statistiche
-db.list_concepts()          # concept → distribuzione emotiva
-db.feeling_distribution()   # sentimento → count
-db.concept_timeline("Debito")  # evoluzione emotiva nel tempo
-db.count(concept="Debito", feeling="ansia")
+# Statistics
+db.list_concepts()             # concept → emotional distribution
+db.feeling_distribution()      # feeling → count
+db.concept_timeline("Debt")    # emotional evolution over time
+db.count(concept="Debt", feeling="anxiety")
 ```
 
 ---
 
-## Il Brain — LLM come strato cognitivo
+## The Brain — LLM as cognitive layer
 
 ```python
 from mnheme       import MemoryDB
 from llm_provider import LLMProvider
 from brain        import Brain
 
-db    = MemoryDB("mente.mnheme")
-llm   = LLMProvider.from_env(".env")   # legge il .env
+db    = MemoryDB("mind.mnheme")
+llm   = LLMProvider.from_env(".env")   # reads from .env
 brain = Brain(db, llm)
 ```
 
-### `perceive()` — input grezzo → ricordo strutturato
+### `perceive()` — raw input → structured memory
 
 ```python
-# L'LLM estrae concept, feeling, tags e arricchisce il testo
-r = brain.perceive("Ho aperto la busta dalla banca. Le mani tremavano.")
+# The LLM extracts concept, feeling, tags and enriches the text
+r = brain.perceive("I opened the envelope from the bank. My hands were shaking.")
 
-print(r.extracted_concept)   # "Debito"
-print(r.extracted_feeling)   # "paura"
-print(r.extracted_tags)      # ["banca", "corpo", "ansia"]
-print(r.enriched_content)    # testo arricchito con profondità psicologica
-# Il ricordo è già salvato in MemoryDB — immutabile
+print(r.extracted_concept)   # "Debt"
+print(r.extracted_feeling)   # "fear"
+print(r.extracted_tags)      # ["bank", "body", "anxiety"]
+print(r.enriched_content)    # text enriched with psychological depth
+# The memory is already saved in MemoryDB — immutable
 ```
 
-### `ask()` — RAG su memoria personale
+### `ask()` — RAG on personal memory
 
 ```python
-# Risponde usando SOLO i ricordi reali come contesto
-ans = brain.ask("Come mi sento rispetto al denaro?")
+# Answers using ONLY real memories as context
+ans = brain.ask("How do I feel about money?")
 
-print(ans.answer)           # risposta basata sui tuoi ricordi
-print(ans.memories_used)    # ricordi usati come contesto RAG
-print(ans.confidence_note)  # "Certezza: alta — dati diretti dai ricordi"
+print(ans.answer)           # answer based on your memories
+print(ans.memories_used)    # memories used as RAG context
+print(ans.confidence_note)  # "Confidence: high — direct data from memories"
 ```
 
-### `reflect()` — analisi emotiva nel tempo
+### `reflect()` — emotional analysis over time
 
 ```python
-ref = brain.reflect("Debito")
-print(ref.arc)         # "da terrore silenzioso a serenità conquistata"
-print(ref.reflection)  # analisi profonda dell'arco emotivo
+ref = brain.reflect("Debt")
+print(ref.arc)         # "from silent terror to hard-won serenity"
+print(ref.reflection)  # deep analysis of the emotional arc
 ```
 
-### `dream()` — connessioni oniriche
+### `dream()` — dream-like connections
 
 ```python
-# Campiona ricordi da sentimenti diversi, trova il filo nascosto
+# Samples memories from different feelings, finds the hidden thread
 dream = brain.dream(n_memories=8)
-print(dream.connections)  # associazioni inattese, tema latente
+print(dream.connections)  # unexpected associations, latent theme
 ```
 
-### `introspect()` — ritratto psicologico
+### `introspect()` — psychological portrait
 
 ```python
 intro = brain.introspect()
-print(intro.portrait)          # chi sei, pattern, tensioni, risorse
-print(intro.dominant_concepts) # ["Famiglia", "Lavoro", "Debito"]
-print(intro.emotional_map)     # {"ansia": 8, "amore": 5, ...}
+print(intro.portrait)          # who you are, patterns, tensions, resources
+print(intro.dominant_concepts) # ["Family", "Work", "Debt"]
+print(intro.emotional_map)     # {"anxiety": 8, "love": 5, ...}
 ```
 
 ---
 
-## LLMProvider — agnostico per design
+## LLMProvider — agnostic by design
 
-Nessun SDK esterno. Solo `urllib` stdlib. Un solo `.env`.
+No external SDK. Just stdlib `urllib`. A single `.env`.
 
 ```bash
-# .env — compila quello che hai, lascia vuoto il resto
+# .env — fill in what you have, leave the rest empty
 
-# Locale — nessuna chiave API necessaria
+# Local — no API key required
 LM_STUDIO_URL=http://localhost:1234/v1/chat/completions
 LM_STUDIO_MODEL=local-model
 LM_STUDIO_RPM=60
@@ -188,13 +188,13 @@ GROQ_MODEL=llama-3.3-70b-versatile
 GROQ_API_KEY=gsk_...
 GROQ_RPM=30
 
-# Anthropic (rilevato automaticamente dall'URL)
+# Anthropic (auto-detected from URL)
 ANTHROPIC_URL=https://api.anthropic.com/v1/messages
 ANTHROPIC_MODEL=claude-opus-4-5
 ANTHROPIC_API_KEY=sk-ant-...
 ANTHROPIC_RPM=5
 
-# Fallback a cascata
+# Cascading fallback
 USE_MULTI_PROVIDER=true
 TEMPERATURE=0.3
 ```
@@ -202,103 +202,103 @@ TEMPERATURE=0.3
 ```python
 llm = LLMProvider.from_env(".env")
 
-# Cambia provider a runtime senza riavviare
+# Switch provider at runtime without restarting
 llm.use("groq")
-llm.use("lm-studio")   # zero costi, locale
+llm.use("lm-studio")   # zero cost, local
 llm.use("anthropic")
 
-# Vedi tutti i provider disponibili
+# See all available providers
 llm.list_providers()
 
-# Priority personalizzata per il fallback
+# Custom priority for fallback
 llm = LLMProvider.from_env(".env",
     priority=["lm-studio", "groq", "anthropic"])
 ```
 
-**Provider supportati** (30+): LM Studio, Ollama, Anthropic, OpenAI, Groq, Mistral, Codestral, SambaNova, OpenRouter, Google AI Studio, Cerebras, NVIDIA NIM, Hugging Face, GitHub Models, Cohere, Together, Fireworks, Nebius, Hyperbolic, Novita, Upstage, Scaleway, Aliyun, AI21, Inference.net, Cloudflare, Vertex AI, e qualsiasi endpoint OpenAI-compatibile custom.
+**Supported providers** (30+): LM Studio, Ollama, Anthropic, OpenAI, Groq, Mistral, Codestral, SambaNova, OpenRouter, Google AI Studio, Cerebras, NVIDIA NIM, Hugging Face, GitHub Models, Cohere, Together, Fireworks, Nebius, Hyperbolic, Novita, Upstage, Scaleway, Aliyun, AI21, Inference.net, Cloudflare, Vertex AI, and any custom OpenAI-compatible endpoint.
 
 ---
 
-## FileStore — storage media adattivo
+## FileStore — adaptive media storage
 
 ```python
-# Allega un file fisico a un ricordo
+# Attach a physical file to a memory
 mem, fe = db.remember_file(
-    "Famiglia", Feeling.AMORE,
-    "/foto/natale2024.jpg",
-    note="Tutti insieme al pranzo"
+    "Family", Feeling.LOVE,
+    "/photos/christmas2024.jpg",
+    note="Everyone together at lunch"
 )
 
-# Allega dati binari direttamente (es. upload da API)
-with open("voce.mp3", "rb") as f:
-    mem, fe = db.remember_bytes("Viaggio", Feeling.NOSTALGIA, f.read(), "voce.mp3")
+# Attach binary data directly (e.g. API upload)
+with open("voice.mp3", "rb") as f:
+    mem, fe = db.remember_bytes("Trip", Feeling.NOSTALGIA, f.read(), "voice.mp3")
 
-# Lettura
+# Reading
 path = db.files.get_path(mem.memory_id)
 data = db.files.get_bytes(mem.memory_id)
 info = db.files.info()
 ```
 
-### Strategia adattiva per filesystem
+### Adaptive filesystem strategy
 
-MNHEME rileva il filesystem al boot ed esegue probe live delle capabilities:
+MNHEME detects the filesystem at boot and runs live capability probes:
 
-| Filesystem | Strategia | Note |
-|------------|-----------|------|
-| ext4, ZFS, NFS, 9p | **HARDLINK** | zero byte, stesso inode |
-| btrfs, xfs, APFS | **REFLINK** | Copy-on-Write, zero blocchi |
+| Filesystem | Strategy | Notes |
+|------------|----------|-------|
+| ext4, ZFS, NFS, 9p | **HARDLINK** | zero bytes, same inode |
+| btrfs, xfs, APFS | **REFLINK** | Copy-on-Write, zero blocks |
 | NTFS | **HARDLINK** | via `CreateHardLinkW` |
 | FAT32, exFAT | **COPY_ATOMIC** | tmp + `os.replace()` |
-| HDFS, S3FS, GCSFuse | **COPY_ATOMIC** | no inode locali |
+| HDFS, S3FS, GCSFuse | **COPY_ATOMIC** | no local inodes |
 
 ---
 
-## Formato fisico del file `.mnheme`
+## Physical `.mnheme` file format
 
-Il database è un file binario append-only:
+The database is an append-only binary file:
 
 ```
 ┌──────────────┬──────────┬───────────────────┐
 │  MAGIC (4B)  │ SIZE (4B)│  PAYLOAD (SIZE B) │
 └──────────────┴──────────┴───────────────────┘
 
-MAGIC   : [0x4D, 0x4E, 0x45, 0xE0]  — firma record
-SIZE    : uint32 big-endian          — lunghezza payload
-PAYLOAD : JSON UTF-8                 — dati del ricordo
+MAGIC   : [0x4D, 0x4E, 0x45, 0xE0]  — record signature
+SIZE    : uint32 big-endian          — payload length
+PAYLOAD : JSON UTF-8                 — memory data
 ```
 
-Ogni scrittura è atomica e `fsync`-ata. I record troncati (crash mid-write) vengono saltati silenziosamente al riavvio. Gli indici in RAM vengono ricostruiti scansionando il file dall'inizio.
+Every write is atomic and `fsync`-ed. Truncated records (crash mid-write) are silently skipped on restart. In-RAM indexes are rebuilt by scanning the file from the beginning.
 
 ---
 
-## Benchmark
+## Benchmarks
 
-Misurati su 2.000 record, Python 3.12, filesystem 9p:
+Measured on 2,000 records, Python 3.12, 9p filesystem:
 
-| Operazione | Media | Throughput |
-|-----------|-------|------------|
-| `remember()` con fsync | 1.8 ms | 552 ops/s |
-| `remember()` senza fsync | 0.2 ms | 4.632 ops/s |
-| `count()` — pura RAM | ~0 ms | 2.774.322 ops/s |
-| `feeling_distribution()` | 0.003 ms | 277.865 ops/s |
+| Operation | Average | Throughput |
+|-----------|---------|------------|
+| `remember()` with fsync | 1.8 ms | 552 ops/s |
+| `remember()` without fsync | 0.2 ms | 4,632 ops/s |
+| `count()` — pure RAM | ~0 ms | 2,774,322 ops/s |
+| `feeling_distribution()` | 0.003 ms | 277,865 ops/s |
 | `recall(concept, limit=10)` | 1.5 ms | 636 ops/s |
 | `recall_by_feeling(limit=20)` | 3.0 ms | 332 ops/s |
-| `recall_all()` — 2.000 record | 300 ms | 3 ops/s |
-| `search()` full-text | 40 ms | ~49k record/s |
-| `search(limit=5)` | 0.1 ms | 8.348 ops/s |
-| Cold start (2.000 rec) | 40 ms | 49k rec/s indicizzati |
+| `recall_all()` — 2,000 records | 300 ms | 3 ops/s |
+| `search()` full-text | 40 ms | ~49k records/s |
+| `search(limit=5)` | 0.1 ms | 8,348 ops/s |
+| Cold start (2,000 rec) | 40 ms | 49k rec/s indexed |
 
-**Dimensione file:** ~374 B/record → ~36 MB per 100k record, ~357 MB per 1M record.
+**File size:** ~374 B/record → ~36 MB per 100k records, ~357 MB per 1M records.
 
 ```bash
-# Esegui i benchmark
+# Run benchmarks
 python mnheme_benchmark.py --records 5000
 python mnheme_benchmark.py --records 10000 --output report.json
 ```
 
 ---
 
-## API REST (opzionale)
+## REST API (optional)
 
 ```bash
 pip install fastapi uvicorn
@@ -307,35 +307,35 @@ uvicorn mnheme_api:app --reload --port 8000
 ```
 
 ```
-POST /memories              → registra un ricordo
-GET  /memories              → tutti i ricordi (filtri: feeling, limit)
-GET  /memories/search?q=    → ricerca full-text
-GET  /concepts              → lista concetti con statistiche
-GET  /concepts/{concept}    → ricordi di un concetto
-GET  /concepts/{concept}/timeline  → evoluzione emotiva
-GET  /feelings              → sentimenti con statistiche
-GET  /feelings/distribution → sentimento → count
-GET  /stats                 → statistiche generali
-GET  /export                → esporta JSON
+POST /memories              → store a memory
+GET  /memories              → all memories (filters: feeling, limit)
+GET  /memories/search?q=    → full-text search
+GET  /concepts              → concept list with statistics
+GET  /concepts/{concept}    → memories for a concept
+GET  /concepts/{concept}/timeline  → emotional evolution
+GET  /feelings              → feelings with statistics
+GET  /feelings/distribution → feeling → count
+GET  /stats                 → general statistics
+GET  /export                → export JSON
 ```
 
 ---
 
-## Struttura del progetto
+## Project structure
 
 ```
 mnheme/
 ├── mnheme.py           # Core — MemoryDB, Feeling, MediaType, Memory
-├── storage.py          # Engine binario append-only
-├── index.py            # Indici in RAM
-├── fsprobe.py          # Rilevamento filesystem
-├── filestore.py        # Storage file fisici
-├── llm_provider.py     # Provider LLM agnostico da .env
-├── brain.py            # Strato cognitivo LLM
-├── mnheme_api.py       # REST API FastAPI (opzionale)
-├── mnheme_benchmark.py # Suite di benchmark
-├── examples.py         # Esempi d'uso
-├── .env.example        # Template configurazione provider
+├── storage.py          # Append-only binary engine
+├── index.py            # In-RAM indexes
+├── fsprobe.py          # Filesystem detection
+├── filestore.py        # Physical file storage
+├── llm_provider.py     # LLM provider agnostic via .env
+├── brain.py            # LLM cognitive layer
+├── mnheme_api.py       # FastAPI REST API (optional)
+├── mnheme_benchmark.py # Benchmark suite
+├── examples.py         # Usage examples
+├── .env.example        # Provider configuration template
 └── tests/
     ├── test_llm_provider.py
     └── test_fsprobe.py
@@ -343,73 +343,83 @@ mnheme/
 
 ---
 
-## Sentimenti supportati
+## Supported feelings
 
-`gioia` · `tristezza` · `rabbia` · `paura` · `nostalgia` · `amore` · `malinconia` · `serenità` · `sorpresa` · `ansia` · `gratitudine` · `vergogna` · `orgoglio` · `noia` · `curiosità`
+`joy` · `sadness` · `anger` · `fear` · `nostalgia` · `love` · `melancholy` · `serenity` · `surprise` · `anxiety` · `gratitude` · `shame` · `pride` · `boredom` · `curiosity`
 
-## Tipi di media
+## Media types
 
 `TEXT` · `IMAGE` · `VIDEO` · `AUDIO` · `DOC`
 
 ---
 
-## Requisiti
+## Requirements
 
 - Python 3.12+
-- Nessuna dipendenza esterna obbligatoria
-- `fastapi` + `uvicorn` solo per l'API REST (opzionale)
+- No mandatory external dependencies
+- `fastapi` + `uvicorn` only for the REST API (optional)
 
 ---
-## LOCAL TEST USING LM_STUDIO
-# Usa LM Studio su localhost:1234 con il modello già caricato
+
+## Local test using LM Studio
+
+```bash
+# Use LM Studio on localhost:1234 with the model already loaded
 python test_local_provider.py
 
-# URL custom
+# Custom URL
 python test_local_provider.py --url http://localhost:1234
 
-# Forza un modello specifico
+# Force a specific model
 python test_local_provider.py --model "mistral-7b-instruct"
 
-# Salva il database invece di cancellarlo dopo il test
-python test_local_provider.py --db mente.mnheme
+# Keep the database instead of deleting it after the test
+python test_local_provider.py --db mind.mnheme
 
-# Output verbose con traceback se qualcosa va male
+# Verbose output with traceback if something goes wrong
 python test_local_provider.py --verbose
----
-
-# Advanced human simulator
-
-## Arco temporale reale
-- I timestamp non sono più "oggi". 
-- Ogni ricordo calcola la data esatta basandosi su birth_date + età_in_giorni ± variazione random di 90 giorni. 
-- Con --birth-year 1975 un ricordo all'età di 8 anni avrà un timestamp intorno al 1983, uno a 35 anni intorno al 2010.
-- 8 fasi della vita con distribuzioni emotive distinte
-- Prima infanzia (0–5), Infanzia (6–11), Adolescenza (12–17), Prima età adulta (18–29), Età adulta (30–44), Mezza età (45–59), Tarda età adulta (60–79), Vecchiaia (80–130). 
-- Ogni fase ha pesi calibrati su dati psicologici reali: l'adolescenza pesa imbarazzo/vergogna/amore, la vecchiaia pesa gratitudine/serenità/nostalgia (positivity effect di Carstensen).
-## Reminiscence bump
-- La distribuzione temporale dei ricordi non è uniforme: il 30% cade nella fascia 15–35 anni, rispecchiando il fenomeno psicologico per cui gli adulti ricordano sproporzionatamente gli eventi di quella fascia.
-## Coscienza narrativa (Consciousness)
-- Mantiene concept usati, tag ricorrenti e lista di ricordi "rielaborabili". Il filo narrativo viene iniettato nel prompt: se in una vita ricorrono tag come lavoro, padre, Milano, il modello sa che possono tornare nei ricordi successivi, creando coerenza biografica.
-## Rielaborazioni (~20%)
-- I ricordi con feeling pesanti (ansia, paura, rabbia, vergogna) vengono messi in una coda reworkable. Con ~20% di probabilità un nuovo slot viene marcato come rielaborazione: stesso concept, feeling cambiato, scrittura in ottica di crescita/guarigione. Il prompt dice esplicitamente "stesso evento visto con occhi diversi a X anni".
-Zero bias LLM
-- Il modello non sceglie mai il feeling — lo riceve come vincolo esplicito slot per slot. La distribuzione reale dipende solo dai pesi per fase. Il modello scrive solo il contenuto narrativo coerente con il feeling e l'età assegnati.
----
+```
 
 ---
 
-## Licenza
+## Advanced human simulator
 
-AATEL — vedi [LICENSE](LICENSE)
+### Real timeline
+- Timestamps are no longer "today".
+- Each memory computes the exact date based on `birth_date + age_in_days ± random variation of 90 days`.
+- With `--birth-year 1975`, a memory at age 8 will have a timestamp around 1983, one at age 35 around 2010.
+- 8 life phases with distinct emotional distributions:
+  Early childhood (0–5), Childhood (6–11), Adolescence (12–17), Early adulthood (18–29), Adulthood (30–44), Middle age (45–59), Late adulthood (60–79), Old age (80–130).
+- Each phase has weights calibrated on real psychological data: adolescence weights embarrassment/shame/love, old age weights gratitude/serenity/nostalgia (Carstensen's positivity effect).
+
+### Reminiscence bump
+- The temporal distribution of memories is not uniform: 30% falls in the 15–35 age range, reflecting the psychological phenomenon whereby adults disproportionately remember events from that period.
+
+### Narrative consciousness
+- Maintains used concepts, recurring tags, and a list of "reprocessable" memories. The narrative thread is injected into the prompt: if tags like `work`, `father`, `Milan` recur throughout a life, the model knows they may reappear in subsequent memories, creating biographical coherence.
+
+### Reprocessings (~20%)
+- Memories with heavy feelings (anxiety, fear, anger, shame) are placed in a reworkable queue. With ~20% probability, a new slot is marked as a reprocessing: same concept, changed feeling, written from a growth/healing perspective. The prompt explicitly states "same event seen with different eyes at age X".
+
+### Zero LLM bias
+- The model never chooses the feeling — it receives it as an explicit constraint slot by slot. The actual distribution depends solely on the per-phase weights. The model only writes narrative content consistent with the assigned feeling and age.
 
 ---
+
+## License
+
+AATEL — see [LICENSE](LICENSE)
+
 ---
 
-## Thsnks
-A special thanks to @KnightNiwrem https://github.com/knightniwrem
+## Thanks
+
+A special thanks to @KnightNiwrem https://github.com/knightniwrem  
 whose questions led to discovering a critical bug triggered by a crash during the write phase.
+
 ---
+
 <p align="center">
-  <sub>MNHEME — dalla musa greca della memoria</sub><br>
-  <sub><em>"Non puoi sovrascrivere ciò che hai vissuto. Puoi solo ricordarlo diversamente."</em></sub>
+  <sub>MNHEME — from the Greek muse of memory</sub><br>
+  <sub><em>"You cannot overwrite what you have lived. You can only remember it differently."</em></sub>
 </p>
