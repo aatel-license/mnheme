@@ -122,8 +122,8 @@ class ProviderProfile:
     model       : str
     api_key     : str = ""
     rpm         : int = 10
-    temperature : float = 0.3
-    max_tokens  : int = 2048
+    temperature : float = 0.2
+    max_tokens  : int = 4096
     timeout     : int = 60
 
     # Rilevato automaticamente dall'URL
@@ -178,7 +178,7 @@ def discover_providers(
     env          : dict[str, str],
     *,
     default_temp : float = 0.3,
-    default_max_tokens: int = 2048,
+    default_max_tokens: int = 4096,
     default_timeout: int = 60,
 ) -> dict[str, ProviderProfile]:
     """

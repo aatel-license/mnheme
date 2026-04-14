@@ -315,7 +315,7 @@ Linee guida:
 - Se i ricordi non sono sufficienti o pertinenti, dichiaralo esplicitamente.
 
 Formato:
-- Risposte concise: 2–4 frasi.
+- Risposte concise: 3–5 frasi.
 - Nessun elenco puntato o spiegazioni meta.
 
 Obiettivo:
