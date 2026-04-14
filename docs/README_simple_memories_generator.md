@@ -72,7 +72,7 @@ python generate_memories.py --n 200 --batch-size 8 --workers 5
 
 2. LLMClient.complete() → chiamata HTTP a /v1/chat/completions
                           temperature: ~0.95–1.10 (variabile per diversità)
-                          max_tokens: 2048
+                          max_tokens: 4096
 
 3. _parse_memories()   → 3 tentativi di parsing JSON:
                           - parse diretto

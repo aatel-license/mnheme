@@ -70,6 +70,7 @@ class PerceptionResult:
     extracted_concept : str
     extracted_feeling : str
     extracted_tags    : list[str]
+    extracted_note    : str
     enriched_content  : str
     raw_input         : str
 
@@ -199,13 +200,29 @@ class Brain:
             f"{{\n"
             f'  "concept": "concetto chiave astratto (1-3 parole, es: Debito, Famiglia, Lavoro)",\n'
             f'  "feeling": "uno ESATTO tra: {valid_feelings_str}",\n'
-            f'  "tags": ["tag1", "tag2", "tag3"],\n'
+            f'  "tags": ["tag1", "tag2", "tag3"] (da 1 a 3 tag rilevanti),\n'
+            f'  "note": "considerazione breve sul concept (1 frase)",\n'
             f'  "enriched": "il ricordo riscritto in prima persona con profondità psicologica (2-3 frasi)"\n'
             f"}}\n\n"
             f"Input: {raw_input}\n\n"
             f"Rispondi SOLO con il JSON, nessun altro testo."
         )
-
+        # prompt = (
+        #     f"Analizza il seguente input e restituisci ESCLUSIVAMENTE un JSON valido con questa struttura:\n\n"
+        #     f"{{\n"
+        #     f'  "concept": "concetto chiave astratto (1-3 parole, es: Debito, Famiglia, Lavoro)",\n'
+        #     f'  "feeling": "uno ESATTO tra: {valid_feelings_str}",\n'
+        #     f'  "tags": ["tag1", "tag2", "tag3"] (da 1 a 3 tag rilevanti),\n'
+        #     f'  "note": "considerazione breve sul concept (1 frase)",\n'
+        #     f'  "enriched": "il ricordo riscritto in prima persona con profondità psicologica (2-3 frasi)"\n'
+        #     f"}}\n\n"
+        #     f"Regole:\n"
+        #     f"- Rispondi SOLO con JSON valido\n"
+        #     f"- Nessun testo fuori dal JSON\n"
+        #     f"- Nessun commento o spiegazione\n"
+        #     f"- Mantieni il JSON parsabile\n\n"
+        #     f"Input:\n{raw_input}"
+        # )
         # Determina se usare vision o testo puro
         is_media = media_type != "text" and media_data
 
@@ -248,9 +265,10 @@ class Brain:
 
         parsed = _parse_json(raw_json)
 
-        ext_concept = concept or parsed.get("concept", "Generale")
-        ext_feeling = feeling or parsed.get("feeling", "nostalgia")
-        ext_tags    = tags    or parsed.get("tags", [])
+        ext_concept = concept or parsed.get("concept", "Nessun concetto elaborato")
+        ext_feeling = feeling or parsed.get("feeling", "Nessun sentimento provato")
+        ext_tags    = tags    or parsed.get("tags", ["Nessun tag estratto"])
+        ext_note    = note    or parsed.get("note", f"""Nessuna nota scritta -> {parsed}""")
         enriched    = parsed.get("enriched", raw_input)
 
         if ext_feeling not in valid_feelings:
@@ -274,7 +292,7 @@ class Brain:
             feeling    = ext_feeling,
             content    = db_content,
             media_type = media_type,
-            note       = note or f"Input originale: {raw_input[:200]}",
+            note       = ext_note or note or f"Input originale: {raw_input[:200]}",
             tags       = ext_tags,
         )
 
@@ -283,6 +301,7 @@ class Brain:
             extracted_concept = ext_concept,
             extracted_feeling = ext_feeling,
             extracted_tags    = ext_tags,
+            extracted_note    = ext_note,
             enriched_content  = enriched,
             raw_input         = raw_input,
         )
@@ -569,7 +588,7 @@ def _memories_to_context(memories: list[Memory]) -> str:
     return "\n\n".join(lines)
 
 
-def _parse_json(text: str) -> dict:
+def _parse_json_old(text: str) -> dict:
     text = text.strip()
     if text.startswith("```"):
         text = "\n".join(
@@ -586,6 +605,47 @@ def _parse_json(text: str) -> dict:
                 pass
     return {}
 
+def _parse_json(text: str) -> dict:
+    if not text:
+        return {}
+
+    text = text.strip()
+
+    # 1. Rimuove markdown fences
+    text = re.sub(r"```[a-zA-Z]*", "", text)
+    text = text.replace("```", "").strip()
+
+    # 2. Se è stato passato un oggetto "wrapper" (tipo response intera), isola content/reasoning
+    # (prende solo la parte utile se presente)
+    if '"content":' in text or '"reasoning_content":' in text:
+        # prova a estrarre solo la parte dopo content/reasoning
+        m = re.search(r'"content"\s*:\s*"([^"]*)"', text, re.DOTALL)
+        if m and m.group(1).strip():
+            text = m.group(1)
+
+        m = re.search(r'"reasoning_content"\s*:\s*"([^"]*)"', text, re.DOTALL)
+        if (not text or text.strip() == "") and m:
+            text = m.group(1)
+
+    # 3. Estrae tutti i possibili JSON object (NON greedy)
+    candidates = re.findall(r"\{.*?\}", text, re.DOTALL)
+    candidates = sorted(candidates, key=len, reverse=True)
+
+    for c in candidates:
+        try:
+            return json.loads(c)
+        except json.JSONDecodeError:
+            continue
+
+    # 4. Tentativo extra: fix base comuni
+    for c in candidates:
+        try:
+            fixed = re.sub(r",\s*([\]}])", r"\1", c)  # trailing commas
+            return json.loads(fixed)
+        except json.JSONDecodeError:
+            continue
+
+    return {}
 
 def _extract_trailing_line(text: str, prefix: str) -> tuple[str, str]:
     """Estrae l'ultima riga con il prefisso dato e restituisce (valore, testo_rimanente)."""
@@ -603,4 +663,4 @@ def _closest_feeling(candidate: str, valid: list[str]) -> str:
     for v in valid:
         if candidate in v or v in candidate:
             return v
-    return "nostalgia"
+    return "neutralità"

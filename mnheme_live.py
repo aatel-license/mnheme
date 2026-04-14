@@ -38,7 +38,7 @@ def _load_env(path: str = ".env") -> None:
         pass
 
 
-_load_env()
+_load_env(str(Path(__file__).parent / ".env"))
 
 # =============================================================================
 #  CONFIGURAZIONE — tutte le variabili sono modificabili nel .env

@@ -141,7 +141,7 @@ class LLMClient:
         system     : str,
         user       : str,
         temperature: float = 0.9,
-        max_tokens : int   = 2048,
+        max_tokens : int   = 4096,
     ) -> str:
         """
         Chiama il modello con il prompt dato e restituisce il testo.

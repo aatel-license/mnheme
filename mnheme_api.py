@@ -17,6 +17,7 @@ try:
 except ImportError:
     raise ImportError("Installa FastAPI: pip install fastapi uvicorn")
 
+from pathlib import Path
 import sys, os
 sys.path.insert(0, os.path.dirname(__file__))
 
@@ -34,7 +35,7 @@ def get_brain() -> Brain:
     global _brain
     if _brain is None:
         try:
-            llm    = LLMProvider.from_env(".env", active="lm-studio")
+            llm    = LLMProvider.from_env(str(Path(__file__).parent / ".env"), active="lm-studio")
             _brain = Brain(db, llm)
         except Exception as e:
             raise HTTPException(503, detail=f"Brain non disponibile: {e}. Configura .env con almeno un provider LLM.")
@@ -189,6 +190,7 @@ class PerceiveOut(BaseModel):
     extracted_concept : str
     extracted_feeling : str
     extracted_tags    : List[str]
+    extracted_note    : str
     enriched_content  : str
     raw_input         : str
 
@@ -264,7 +266,7 @@ def brain_perceive(body: PerceiveIn):
             concept    = body.concept    or None,
             feeling    = body.feeling    or None,
             tags       = body.tags       or None,
-            note       = body.note,
+            note       = body.note       or None,
             media_type = body.media_type or "text",
             media_data = body.media_data or None,
             media_mime = body.media_mime or None,
@@ -274,6 +276,7 @@ def brain_perceive(body: PerceiveIn):
             extracted_concept = r.extracted_concept,
             extracted_feeling = r.extracted_feeling,
             extracted_tags    = r.extracted_tags,
+            extracted_note     = r.extracted_note,
             enriched_content  = r.enriched_content,
             raw_input         = r.raw_input,
         )
@@ -367,3 +370,16 @@ def brain_summarize(body: SummarizeIn):
         return {"text": text, "memories_used": len(memories), "style": body.style}
     except Exception as e:
         raise HTTPException(500, detail=str(e))
+
+
+def main():
+    import uvicorn
+    uvicorn.run(
+        "mnheme_api:app",          # file:variabile FastAPI
+        host="0.0.0.0",
+        port=8123,
+        reload=True
+    )
+
+if __name__ == "__main__":
+    main()
