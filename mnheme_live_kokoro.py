@@ -85,7 +85,28 @@ _load_env()
 # KOKORO_SAMPLE_RATE         = 24000                # sample rate kokoro (non modificare)
 #
 # =============================================================================
+import re as _re
 
+def _strip_markdown(text: str) -> str:
+    """Rimuove la formattazione markdown dal testo."""
+    # Titoli
+    text = _re.sub(r'#{1,6}\s+', '', text)
+    # Grassetto / corsivo
+    text = _re.sub(r'\*{1,3}(.+?)\*{1,3}', r'\1', text)
+    text = _re.sub(r'_{1,3}(.+?)_{1,3}', r'\1', text)
+    # Elenchi puntati / numerati
+    text = _re.sub(r'^\s*[-*•]\s+', '', text, flags=_re.MULTILINE)
+    text = _re.sub(r'^\s*\d+\.\s+', '', text, flags=_re.MULTILINE)
+    # Blocchi codice / inline code
+    text = _re.sub(r'```.*?```', '', text, flags=_re.DOTALL)
+    text = _re.sub(r'`(.+?)`', r'\1', text)
+    # Link
+    text = _re.sub(r'\[(.+?)\]\(.+?\)', r'\1', text)
+    # Righe orizzontali
+    text = _re.sub(r'^\s*[-*_]{3,}\s*$', '', text, flags=_re.MULTILINE)
+    # Pulizia spazi/righe vuote multiple
+    text = _re.sub(r'\n{3,}', '\n\n', text)
+    return text.strip()
 
 def _env(key: str, default: str = "") -> str:
     return os.environ.get(key, default).strip()
@@ -316,7 +337,7 @@ Linee guida:
 
 Formato:
 - Risposte concise: 3–5 frasi.
-- Nessun elenco puntato o spiegazioni meta.
+- Rispondi SEMPRE in testo puro. Non usare mai markdown: niente **, niente *, niente #, niente -, niente ```.
 
 Obiettivo:
 Fornire risposte fedeli ai ricordi, coerenti e prive di abbellimenti inutili."""
@@ -442,7 +463,7 @@ def lm_chat(user_text: str, memories: list[dict], history: list[dict]) -> str:
             max_tokens=Cfg.LM_TOKENS_CHAT,
             temperature=Cfg.LM_TEMP_CHAT,
         )
-        return resp.choices[0].message.content.strip()
+        return _strip_markdown(resp.choices[0].message.content.strip())
     except Exception as e:
         log("🤖", f"Errore chat: {e}", C.RE)
         return "Non riesco a rispondere in questo momento."
