@@ -59,18 +59,20 @@ def _load_env(path: str = ".env") -> None:
     except FileNotFoundError:
         pass
 
-_load_env()
-
+_load_env(str(Path(__file__).parent / ".env"))
 # ── Config ────────────────────────────────────────────────────────────────────
 DB_PATH   = os.environ.get("MNHEME_DB_PATH", "mnheme.mnheme")
 FILES_DIR = os.environ.get("MNHEME_FILES_DIR", None)
-BRAIN_ON  = os.environ.get("BRAIN_ENABLED", "false").lower() in ("true", "1", "yes")
+BRAIN_ON  = os.environ.get("BRAIN_ENABLED", "true").lower() in ("true", "1", "yes")
 
 # ── Init MNHĒMĒ ───────────────────────────────────────────────────────────────
 try:
     sys.path.insert(0, str(Path(__file__).parent))
     from mnheme import MemoryDB, Feeling, MediaType, MnhemeError
 except ImportError as e:
+    import traceback
+    print(f"[mnheme_mcp] Brain non disponibile: {e}", file=sys.stderr)
+    print(traceback.format_exc(), file=sys.stderr)
     print(
         f"[mnheme_mcp] ERRORE: impossibile importare mnheme — {e}\n"
         "  Assicurati che mnheme_mcp.py sia nella stessa directory del repo.",
@@ -85,7 +87,7 @@ if BRAIN_ON:
     try:
         from llm_provider import LLMProvider
         from brain import Brain
-        llm   = LLMProvider.from_env(".env")
+        llm = LLMProvider.from_env(Path(__file__).parent / ".env")
         brain = Brain(db, llm)
     except Exception as e:
         print(f"[mnheme_mcp] Brain non disponibile: {e}", file=sys.stderr)
