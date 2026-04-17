@@ -51,12 +51,12 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["GET","PO
 # ── Schemi DB ────────────────────────────────────
 
 class MemoryIn(BaseModel):
-    concept    : str           = Field(...,  example="Debito")
-    feeling    : str           = Field(...,  example="ansia")
-    content    : str           = Field(...,  example="Ho firmato il mutuo oggi.")
-    media_type : str           = Field("text", example="text")
-    note       : Optional[str] = Field("",  example="Era un mercoledì piovoso")
-    tags       : List[str]     = Field(default_factory=list, example=["casa","2024"])
+    concept    : str           = Field(..., json_schema_extra={"example": "Debito"})
+    feeling    : str           = Field(..., json_schema_extra={"example": "ansia"})
+    content    : str           = Field(..., json_schema_extra={"example": "Ho firmato il mutuo oggi."})
+    media_type : str           = Field("text", json_schema_extra={"example": "text"})
+    note       : Optional[str] = Field("",  json_schema_extra={"example": "Era un mercoledì piovoso"})
+    tags       : List[str]     = Field(default_factory=list, json_schema_extra={"example": ["casa","2024"]})
 
 class MemoryOut(BaseModel):
     memory_id  : str
@@ -171,19 +171,19 @@ def export(
 # ── Schemi Brain ─────────────────────────────────
 
 class PerceiveIn(BaseModel):
-    raw_input  : str            = Field(...,   example="Ho aperto la busta dalla banca. Le mani tremavano.")
-    concept    : Optional[str] = Field(None,  example="Debito")
-    feeling    : Optional[str] = Field(None,  example="paura")
+    raw_input  : str            = Field(...,   json_schema_extra={"example": "Ho aperto la busta dalla banca. Le mani tremavano."})
+    concept    : Optional[str] = Field(None,  json_schema_extra={"example": "Debito"})
+    feeling    : Optional[str] = Field(None,  json_schema_extra={"example": "paura"})
     tags       : List[str]     = Field(default_factory=list)
-    note       : str           = Field("",    example="Appunto manuale")
+    note       : str           = Field("",    json_schema_extra={"example": "Appunto manuale"})
     # Campi vision/media — opzionali
-    media_type : str           = Field("text", example="image",
-                                       description="text | image | video | audio | doc")
+    media_type : str           = Field("text", json_schema_extra={"example": "image"},
+                                        description="text | image | video | audio | doc")
     media_data : Optional[str] = Field(None,
                                        description="Data URL completo (data:mime;base64,...) "
                                                    "oppure base64 puro del file allegato")
-    media_mime : Optional[str] = Field(None,  example="image/jpeg",
-                                       description="MIME type del file (obbligatorio se media_data presente)")
+    media_mime : Optional[str] = Field(None,  json_schema_extra={"example": "image/jpeg"},
+                                        description="MIME type del file (obbligatorio se media_data presente)")
 
 class PerceiveOut(BaseModel):
     memory_id         : str
@@ -195,8 +195,8 @@ class PerceiveOut(BaseModel):
     raw_input         : str
 
 class AskIn(BaseModel):
-    question     : str           = Field(..., example="Come mi sento rispetto al denaro?")
-    max_memories : int           = Field(15,  example=15)
+    question     : str           = Field(..., json_schema_extra={"example": "Come mi sento rispetto al denaro?"})
+    max_memories : int           = Field(15,  json_schema_extra={"example": 15})
     concepts     : Optional[List[str]] = Field(None)
 
 class AskOut(BaseModel):
@@ -225,10 +225,10 @@ class IntrospectOut(BaseModel):
     provider_used     : str
 
 class SummarizeIn(BaseModel):
-    concept : Optional[str] = Field(None,       example="Famiglia")
-    feeling : Optional[str] = Field(None,       example="amore")
-    style   : str           = Field("narrativo", example="narrativo")
-    limit   : int           = Field(20,          example=20)
+    concept : Optional[str] = Field(None,       json_schema_extra={"example": "Famiglia"})
+    feeling : Optional[str] = Field(None,       json_schema_extra={"example": "amore"})
+    style   : str           = Field("narrativo", json_schema_extra={"example": "narrativo"})
+    limit   : int           = Field(20,          json_schema_extra={"example": 20})
 
 class BrainStatusOut(BaseModel):
     available     : bool
