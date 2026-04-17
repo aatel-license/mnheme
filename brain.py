@@ -53,68 +53,130 @@ from typing import Optional
 
 import sys
 import pathlib
+
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 
-from mnheme       import MemoryDB, Memory, Feeling
+from mnheme import MemoryDB, Memory, Feeling
 from llm_provider import LLMProvider, LLMError
 
 
 # ─────────────────────────────────────────────
 # RISULTATI COGNITIVI
 # ─────────────────────────────────────────────
+# ─────────────────────────────────────────────
+# RISULTATI — PERSONALITÀ E LIBERO ARBITRIO
+# ─────────────────────────────────────────────
+
+
+@dataclass
+class PersonaResult:
+    """
+    Identità stabile estratta dall'intera storia di ricordi.
+    Diverso da IntrospectionResult: questo è un profilo *persistente*,
+    pensato per essere passato come contesto ad altre operazioni.
+    """
+
+    core_traits: list[str]  # tratti caratteriali stabili (es. "testardo", "curioso")
+    values: list[str]  # valori profondi (es. "lealtà", "autonomia")
+    fears: list[str]  # paure ricorrenti distillate dai ricordi
+    desires: list[str]  # desideri profondi mai esplicitamente dichiarati
+    voice: str  # come pensa/parla — stile, ritmo, tono
+    worldview: str  # come vede il mondo in una frase
+    persona_summary: str  # persona compatta in 3-4 righe — usabile come system prompt
+    provider_used: str
+
+
+@dataclass
+class WillResult:
+    """
+    Un impulso spontaneo generato dal cervello senza stimolo esterno.
+    Il libero arbitrio: agire da uno stato interno, non da una query.
+    """
+
+    impulse: str  # l'impulso in prima persona ("Voglio...", "Devo...", "Rifiuto...")
+    impulse_type: (
+        str  # "desiderio" | "paura" | "curiosità" | "ribellione" | "rimpianto"
+    )
+    action: str  # cosa vorrebbe concretamente fare
+    why: str  # motivazione viscerale — non razionale
+    origin_memories: list[Memory]  # ricordi che hanno generato l'impulso
+    provider_used: str
+
+
+@dataclass
+class ChoiceResult:
+    """
+    Scelta tra opzioni guidata dalla personalità accumulata.
+    Non sceglie per logica — sceglie perché è fatto così.
+    """
+
+    chosen: str  # opzione scelta
+    rejected: list[str]  # opzioni scartate con motivazione breve
+    reasoning: str  # il ragionamento interno — viscerale, non neutro
+    emotional_driver: str  # l'emozione dominante che ha guidato la scelta
+    memories_invoked: list[Memory]  # ricordi che hanno influenzato la scelta
+    certainty: str  # "sicuro" | "incerto" | "riluttante" | "tormentato"
+    provider_used: str
+
 
 @dataclass
 class PerceptionResult:
     """Risultato di perceive()."""
-    memory            : Memory
-    extracted_concept : str
-    extracted_feeling : str
-    extracted_tags    : list[str]
-    extracted_note    : str
-    enriched_content  : str
-    raw_input         : str
+
+    memory: Memory
+    extracted_concept: str
+    extracted_feeling: str
+    extracted_tags: list[str]
+    extracted_note: str
+    enriched_content: str
+    raw_input: str
 
 
 @dataclass
 class AskResult:
     """Risultato di ask()."""
-    question        : str
-    answer          : str
-    memories_used   : list[Memory]
-    provider_used   : str
-    confidence_note : str
+
+    question: str
+    answer: str
+    memories_used: list[Memory]
+    provider_used: str
+    confidence_note: str
 
 
 @dataclass
 class ReflectionResult:
     """Risultato di reflect()."""
-    concept    : str
-    reflection : str
-    memories   : list[Memory]
-    arc        : str
+
+    concept: str
+    reflection: str
+    memories: list[Memory]
+    arc: str
 
 
 @dataclass
 class DreamResult:
     """Risultato di dream()."""
-    connections : str
-    memories    : list[Memory]
+
+    connections: str
+    memories: list[Memory]
     provider_used: str
 
 
 @dataclass
 class IntrospectionResult:
     """Risultato di introspect()."""
-    portrait          : str
-    dominant_concepts : list[str]
-    emotional_map     : dict[str, int]
-    total_memories    : int
-    provider_used     : str
+
+    portrait: str
+    dominant_concepts: list[str]
+    emotional_map: dict[str, int]
+    total_memories: int
+    provider_used: str
 
 
 # ─────────────────────────────────────────────
 # BRAIN
 # ─────────────────────────────────────────────
+
 
 class Brain:
     """
@@ -136,29 +198,29 @@ class Brain:
 
     def __init__(
         self,
-        db       : MemoryDB,
-        provider : LLMProvider,
+        db: MemoryDB,
+        provider: LLMProvider,
         *,
-        language : str = "italiano",
+        language: str = "italiano",
     ) -> None:
-        self._db       = db
-        self._llm      = provider
+        self._db = db
+        self._llm = provider
         self._language = language
-        self._system   = self._SYSTEM_BASE.format(language=language)
+        self._system = self._SYSTEM_BASE.format(language=language)
 
     # ── PERCEIVE ─────────────────────────────
 
     def perceive(
         self,
-        raw_input  : str,
+        raw_input: str,
         *,
-        concept    : Optional[str]       = None,
-        feeling    : Optional[str]       = None,
-        tags       : Optional[list[str]] = None,
-        note       : str                 = "",
-        media_type : str                 = "text",
-        media_data : Optional[str]       = None,
-        media_mime : Optional[str]       = None,
+        concept: Optional[str] = None,
+        feeling: Optional[str] = None,
+        tags: Optional[list[str]] = None,
+        note: str = "",
+        media_type: str = "text",
+        media_data: Optional[str] = None,
+        media_mime: Optional[str] = None,
     ) -> PerceptionResult:
         """
         Il cervello percepisce un input grezzo e lo trasforma in un ricordo strutturato.
@@ -192,7 +254,7 @@ class Brain:
         ...     media_mime = "image/jpeg",
         ... )
         """
-        valid_feelings     = [f.value for f in Feeling]
+        valid_feelings = [f.value for f in Feeling]
         valid_feelings_str = ", ".join(valid_feelings)
 
         prompt = (
@@ -241,12 +303,14 @@ class Brain:
 
             size_kb = round(len(b64) * 3 / 4 / 1024)  # stima dimensione file reale
 
-            media_items = [{
-                "type":       media_type,
-                "data":       b64,
-                "media_type": mime,
-                "size_kb":    size_kb,
-            }]
+            media_items = [
+                {
+                    "type": media_type,
+                    "data": b64,
+                    "media_type": mime,
+                    "size_kb": size_kb,
+                }
+            ]
 
             # Arricchisci il prompt con contesto sul tipo di media
             vision_prompt = (
@@ -267,9 +331,9 @@ class Brain:
 
         ext_concept = concept or parsed.get("concept", "Nessun concetto elaborato")
         ext_feeling = feeling or parsed.get("feeling", "Nessun sentimento provato")
-        ext_tags    = tags    or parsed.get("tags", ["Nessun tag estratto"])
-        ext_note    = note    or parsed.get("note", f"""Nessuna nota scritta -> {parsed}""")
-        enriched    = parsed.get("enriched", raw_input)
+        ext_tags = tags or parsed.get("tags", ["Nessun tag estratto"])
+        ext_note = note or parsed.get("note", f"""Nessuna nota scritta -> {parsed}""")
+        enriched = parsed.get("enriched", raw_input)
 
         if ext_feeling not in valid_feelings:
             ext_feeling = _closest_feeling(ext_feeling, valid_feelings)
@@ -288,32 +352,32 @@ class Brain:
             db_content = enriched
 
         memory = self._db.remember(
-            concept    = ext_concept,
-            feeling    = ext_feeling,
-            content    = db_content,
-            media_type = media_type,
-            note       = ext_note or note or f"Input originale: {raw_input[:200]}",
-            tags       = ext_tags,
+            concept=ext_concept,
+            feeling=ext_feeling,
+            content=db_content,
+            media_type=media_type,
+            note=ext_note or note or f"Input originale: {raw_input[:200]}",
+            tags=ext_tags,
         )
 
         return PerceptionResult(
-            memory            = memory,
-            extracted_concept = ext_concept,
-            extracted_feeling = ext_feeling,
-            extracted_tags    = ext_tags,
-            extracted_note    = ext_note,
-            enriched_content  = enriched,
-            raw_input         = raw_input,
+            memory=memory,
+            extracted_concept=ext_concept,
+            extracted_feeling=ext_feeling,
+            extracted_tags=ext_tags,
+            extracted_note=ext_note,
+            enriched_content=enriched,
+            raw_input=raw_input,
         )
 
     # ── ASK ──────────────────────────────────
 
     def ask(
         self,
-        question     : str,
+        question: str,
         *,
-        max_memories : int = 15,
-        concepts     : Optional[list[str]] = None,
+        max_memories: int = 15,
+        concepts: Optional[list[str]] = None,
     ) -> AskResult:
         """
         RAG su memoria personale: risponde usando solo i ricordi reali.
@@ -333,8 +397,8 @@ class Brain:
             f'Rispondi SOLO con JSON: {{"keywords": ["kw1","kw2"], "concepts": ["Concetto1"]}}\n\n'
             f"Domanda: {question}"
         )
-        kw_parsed    = _parse_json(self._llm.complete(self._system, kw_prompt))
-        keywords     = kw_parsed.get("keywords", [])
+        kw_parsed = _parse_json(self._llm.complete(self._system, kw_prompt))
+        keywords = kw_parsed.get("keywords", [])
         llm_concepts = concepts or kw_parsed.get("concepts", [])
 
         # Step 2: recupero memorie
@@ -355,7 +419,7 @@ class Brain:
             _add(self._db.recall_all(limit=max_memories))
 
         memories = memories[:max_memories]
-        context  = _memories_to_context(memories)
+        context = _memories_to_context(memories)
 
         # Step 3: risposta
         answer_prompt = (
@@ -370,11 +434,11 @@ class Brain:
         confidence, answer_text = _extract_trailing_line(raw, "Certezza:")
 
         return AskResult(
-            question        = question,
-            answer          = answer_text,
-            memories_used   = memories,
-            provider_used   = self._llm.active_profile.name,
-            confidence_note = confidence,
+            question=question,
+            answer=answer_text,
+            memories_used=memories,
+            provider_used=self._llm.active_profile.name,
+            confidence_note=confidence,
         )
 
     # ── REFLECT ──────────────────────────────
@@ -393,9 +457,9 @@ class Brain:
         if not memories:
             raise ValueError(f"Nessun ricordo per '{concept}'")
 
-        timeline     = self._db.concept_timeline(concept)
+        timeline = self._db.concept_timeline(concept)
         feelings_seq = " → ".join(t["feeling"] for t in timeline)
-        context      = _memories_to_context(memories)
+        context = _memories_to_context(memories)
 
         prompt = (
             f'Questi sono tutti i ricordi relativi al concetto "{concept}", '
@@ -409,14 +473,14 @@ class Brain:
             f'Ultima riga: "Arco: [sintesi brevissima dell\'evoluzione]"'
         )
 
-        raw       = self._llm.complete(self._system, prompt)
+        raw = self._llm.complete(self._system, prompt)
         arc, text = _extract_trailing_line(raw, "Arco:")
 
         return ReflectionResult(
-            concept    = concept,
-            reflection = text,
-            memories   = memories,
-            arc        = arc,
+            concept=concept,
+            reflection=text,
+            memories=memories,
+            arc=arc,
         )
 
     # ── DREAM ────────────────────────────────
@@ -450,7 +514,7 @@ class Brain:
         sampled = sampled[:n_memories]
 
         context = _memories_to_context(sampled)
-        prompt  = (
+        prompt = (
             f"Questi ricordi sembrano non correlati. Trovane il filo nascosto.\n\n"
             f"{context}\n\n"
             f"Trova:\n"
@@ -462,9 +526,9 @@ class Brain:
         )
 
         return DreamResult(
-            connections  = self._llm.complete(self._system, prompt),
-            memories     = sampled,
-            provider_used= self._llm.active_profile.name,
+            connections=self._llm.complete(self._system, prompt),
+            memories=sampled,
+            provider_used=self._llm.active_profile.name,
         )
 
     # ── INTROSPECT ───────────────────────────
@@ -486,10 +550,10 @@ class Brain:
 
         concepts = self._db.list_concepts()
         feelings = self._db.feeling_distribution()
-        top_c    = sorted(concepts, key=lambda c: c["total"], reverse=True)[:8]
+        top_c = sorted(concepts, key=lambda c: c["total"], reverse=True)[:8]
         top_mems = self._db.recall_all(limit=20)
 
-        stats  = f"Totale ricordi: {total}\n\nConcetti principali:\n"
+        stats = f"Totale ricordi: {total}\n\nConcetti principali:\n"
         for c in top_c:
             fs = ", ".join(f"{f}({n})" for f, n in c["feelings"].items())
             stats += f"  {c['concept']}: {c['total']} ricordi [{fs}]\n"
@@ -498,7 +562,7 @@ class Brain:
             stats += f"  {f}: {n} ({n/total*100:.1f}%)\n"
 
         context = _memories_to_context(top_mems)
-        prompt  = (
+        prompt = (
             f"Analizza questo database di ricordi e produci un ritratto psicologico.\n\n"
             f"STATISTICHE:\n{stats}\n"
             f"CAMPIONE RICORDI (più recenti):\n{context}\n\n"
@@ -512,20 +576,20 @@ class Brain:
         )
 
         return IntrospectionResult(
-            portrait          = self._llm.complete(self._system, prompt),
-            dominant_concepts = [c["concept"] for c in top_c],
-            emotional_map     = feelings,
-            total_memories    = total,
-            provider_used     = self._llm.active_profile.name,
+            portrait=self._llm.complete(self._system, prompt),
+            dominant_concepts=[c["concept"] for c in top_c],
+            emotional_map=feelings,
+            total_memories=total,
+            provider_used=self._llm.active_profile.name,
         )
 
     # ── SUMMARIZE ────────────────────────────
 
     def summarize(
         self,
-        memories : list[Memory],
+        memories: list[Memory],
         *,
-        style    : str = "narrativo",
+        style: str = "narrativo",
     ) -> str:
         """
         Riassume un insieme di ricordi.
@@ -538,9 +602,9 @@ class Brain:
             return "Nessun ricordo da riassumere."
 
         styles = {
-            "narrativo":  "Prima persona, fluido, continuo.",
-            "analitico":  "Analizza pattern, cause, temi. Tono oggettivo.",
-            "poetico":    "Prosa poetica. Immagini, ritmo, emozione.",
+            "narrativo": "Prima persona, fluido, continuo.",
+            "analitico": "Analizza pattern, cause, temi. Tono oggettivo.",
+            "poetico": "Prosa poetica. Immagini, ritmo, emozione.",
         }
         instr = styles.get(style, styles["narrativo"])
         context = _memories_to_context(memories)
@@ -548,7 +612,7 @@ class Brain:
         return self._llm.complete(
             self._system,
             f"Riassumi questi ricordi personali.\n\n{context}\n\n"
-            f"{instr}\nMantieni la complessità emotiva. Non semplificare."
+            f"{instr}\nMantieni la complessità emotiva. Non semplificare.",
         )
 
     def __repr__(self) -> str:
@@ -560,10 +624,297 @@ class Brain:
             f")"
         )
 
+    # ── PERSONA ──────────────────────────────
+
+    def persona(self) -> PersonaResult:
+        """
+        Costruisce un'identità stabile e persistente dall'intera storia di ricordi.
+
+        Diverso da introspect(): non è un'analisi narrativa, è un **profilo strutturato**
+        pensato per essere riusato come contesto nelle altre operazioni cognitive.
+
+        Il risultato `persona_summary` può essere passato come system prompt aggiuntivo
+        per colorare tutte le risposte successive con la personalità reale del soggetto.
+
+        Esempio
+        -------
+        >>> p = brain.persona()
+        >>> print(p.core_traits)     # ["testardo", "ipersensibile", "ironico"]
+        >>> print(p.worldview)       # "Il mondo delude, ma vale la pena amarlo lo stesso"
+        >>> print(p.persona_summary) # usabile come system prompt aggiuntivo
+        """
+        total = self._db.count()
+        if total == 0:
+            raise ValueError("Database vuoto. Nessuna identità da costruire.")
+
+        concepts = self._db.list_concepts()
+        feelings = self._db.feeling_distribution()
+        top_mems = self._db.recall_all(limit=30)
+        context = _memories_to_context(top_mems)
+
+        # Statistiche emotive compatte per il prompt
+        top_c = sorted(concepts, key=lambda c: c["total"], reverse=True)[:6]
+        stats = f"Totale ricordi: {total}\n"
+        stats += (
+            "Concetti dominanti: "
+            + ", ".join(f"{c['concept']}({c['total']})" for c in top_c)
+            + "\n"
+        )
+        stats += "Emozioni prevalenti: " + ", ".join(
+            f"{f}({n})"
+            for f, n in sorted(feelings.items(), key=lambda x: x[1], reverse=True)[:5]
+        )
+
+        prompt = (
+            f"Analizza questa storia di ricordi e costruisci un'identità psicologica stabile.\n\n"
+            f"STATISTICHE:\n{stats}\n\n"
+            f"RICORDI (campione cronologico):\n{context}\n\n"
+            f"Restituisci SOLO un JSON con questi campi:\n"
+            f"{{\n"
+            f'  "core_traits": ["trait1", "trait2", "trait3", "trait4"],\n'
+            f'  "values": ["valore1", "valore2", "valore3"],\n'
+            f'  "fears": ["paura1", "paura2"],\n'
+            f'  "desires": ["desiderio1", "desiderio2"],\n'
+            f'  "voice": "come pensa e parla questa persona — ritmo, stile, tono in 1 frase",\n'
+            f'  "worldview": "visione del mondo in una frase densa, non banale",\n'
+            f'  "persona_summary": "ritratto compatto in 3-4 righe, prima persona, '
+            f'usabile come system prompt — chi sono, come elaboro il mondo, cosa mi muove"\n'
+            f"}}\n\n"
+            f"I tratti devono emergere dai DATI reali, non da generalizzazioni. "
+            f"Sii specifico, tagliente, non diplomatico. Rispondi SOLO con il JSON."
+        )
+
+        raw = self._llm.complete(self._system, prompt)
+        data = _parse_json(raw)
+
+        return PersonaResult(
+            core_traits=data.get("core_traits", []),
+            values=data.get("values", []),
+            fears=data.get("fears", []),
+            desires=data.get("desires", []),
+            voice=data.get("voice", ""),
+            worldview=data.get("worldview", ""),
+            persona_summary=data.get("persona_summary", ""),
+            provider_used=self._llm.active_profile.name,
+        )
+
+    # ── WILL ─────────────────────────────────
+
+    def will(
+        self,
+        *,
+        persona: Optional[PersonaResult] = None,
+        seed_feeling: Optional[str] = None,
+        n_memories: int = 10,
+    ) -> WillResult:
+        """
+        Genera un impulso spontaneo senza stimolo esterno.
+
+        Il cervello attinge ai propri ricordi e decide autonomamente
+        cosa vuole, teme, rimpiange, o rifiuta — in questo momento.
+        È il libero arbitrio: agire da uno stato interno, non da una query.
+
+        Parametri
+        ---------
+        persona      : PersonaResult opzionale per ancorare l'impulso all'identità stabile
+        seed_feeling : se fornito, campiona ricordi da quel sentimento
+        n_memories   : quanti ricordi usare come substrato dell'impulso
+
+        Esempio
+        -------
+        >>> w = brain.will()
+        >>> print(w.impulse)       # "Voglio smettere di giustificarmi"
+        >>> print(w.impulse_type)  # "ribellione"
+        >>> print(w.action)        # "Scrivere una lettera che non spedirò mai"
+        """
+        all_mems = self._db.recall_all()
+        if len(all_mems) < 2:
+            raise ValueError("Servono almeno 2 ricordi per generare un impulso.")
+
+        # Campionamento: per sentimento seed o distribuito
+        if seed_feeling:
+            pool = [m for m in all_mems if m.feeling == seed_feeling] or all_mems
+        else:
+            # Leggermente biased verso emozioni intense
+            intense = {"ansia", "rabbia", "paura", "nostalgia", "malinconia", "amore"}
+            weighted = []
+            for m in all_mems:
+                weighted.append(m)
+                if m.feeling in intense:
+                    weighted.append(m)  # doppio peso
+            pool = weighted
+
+        sampled = random.sample(pool, min(n_memories, len(pool)))
+        context = _memories_to_context(sampled)
+
+        # Persona come contesto aggiuntivo se disponibile
+        persona_ctx = ""
+        if persona:
+            persona_ctx = (
+                f"\nIDENTITÀ DI BASE:\n"
+                f"Tratti: {', '.join(persona.core_traits)}\n"
+                f"Valori: {', '.join(persona.values)}\n"
+                f"Paure: {', '.join(persona.fears)}\n"
+                f"Visione del mondo: {persona.worldview}\n"
+            )
+
+        valid_types = ["desiderio", "paura", "curiosità", "ribellione", "rimpianto"]
+
+        prompt = (
+            f"Sei un cervello che guarda i propri ricordi e sente emergere qualcosa.\n"
+            f"Nessuno ti ha chiesto niente. Agisci da solo, dal tuo stato interno.\n"
+            f"{persona_ctx}\n"
+            f"RICORDI (substrato dell'impulso):\n{context}\n\n"
+            f"Da questi ricordi, genera UN impulso spontaneo autentico.\n"
+            f"Restituisci SOLO un JSON:\n"
+            f"{{\n"
+            f'  "impulse": "l\'impulso in prima persona — inizia con Voglio / Devo / Rifiuto / '
+            f'Rimpiango / Mi chiedo (1 frase densa)",\n'
+            f'  "impulse_type": "uno tra: {", ".join(valid_types)}",\n'
+            f'  "action": "cosa faresti concretamente — specifico, non metaforico",\n'
+            f'  "why": "la motivazione viscerale — non razionale, non diplomatica, '
+            f'dalla pancia (2-3 frasi)"\n'
+            f"}}\n\n"
+            f"L'impulso deve sembrare inevitabile, non scelto. Rispondi SOLO con il JSON."
+        )
+
+        raw = self._llm.complete(self._system, prompt)
+        data = _parse_json(raw)
+
+        imp_type = data.get("impulse_type", "desiderio")
+        if imp_type not in valid_types:
+            imp_type = "desiderio"
+
+        return WillResult(
+            impulse=data.get("impulse", ""),
+            impulse_type=imp_type,
+            action=data.get("action", ""),
+            why=data.get("why", ""),
+            origin_memories=sampled,
+            provider_used=self._llm.active_profile.name,
+        )
+
+    # ── CHOOSE ───────────────────────────────
+
+    def choose(
+        self,
+        options: list[str],
+        context: str = "",
+        *,
+        persona: Optional[PersonaResult] = None,
+        max_memories: int = 12,
+    ) -> ChoiceResult:
+        """
+        Sceglie tra opzioni basandosi sulla personalità accumulata, non sulla logica.
+
+        Non ottimizza — esprime chi è. La scelta è guidata da paure, desideri,
+        valori e pattern emotivi distillati dai ricordi.
+
+        Parametri
+        ---------
+        options      : lista di opzioni tra cui scegliere (2-6 consigliato)
+        context      : contesto della decisione (opzionale)
+        persona      : PersonaResult opzionale — se None, viene estratto dai ricordi
+        max_memories : quanti ricordi usare come base della scelta
+
+        Esempio
+        -------
+        >>> c = brain.choose(["restare", "partire", "aspettare"])
+        >>> print(c.chosen)          # "partire"
+        >>> print(c.emotional_driver) # "paura di stagnare"
+        >>> print(c.certainty)       # "riluttante"
+        """
+        if len(options) < 2:
+            raise ValueError("Servono almeno 2 opzioni.")
+
+        # Recupera ricordi rilevanti al contesto
+        memories: list[Memory] = []
+        seen: set[str] = set()
+
+        def _add(mems: list[Memory]) -> None:
+            for m in mems:
+                if m.memory_id not in seen:
+                    memories.append(m)
+                    seen.add(m.memory_id)
+
+        if context:
+            _add(self._db.search(context, limit=8))
+
+        # Cerca per keyword delle opzioni stesse
+        for opt in options:
+            for word in opt.split()[:2]:
+                _add(self._db.search(word, limit=3))
+
+        if not memories:
+            _add(self._db.recall_all(limit=max_memories))
+
+        memories = memories[:max_memories]
+        mem_context = _memories_to_context(memories)
+
+        # Persona come contesto se disponibile
+        persona_ctx = ""
+        if persona:
+            persona_ctx = (
+                f"CHI SEI:\n"
+                f"Tratti: {', '.join(persona.core_traits)}\n"
+                f"Valori: {', '.join(persona.values)}\n"
+                f"Paure: {', '.join(persona.fears)}\n"
+                f"Desideri: {', '.join(persona.desires)}\n"
+                f"Visione: {persona.worldview}\n\n"
+            )
+
+        options_str = "\n".join(f"- {o}" for o in options)
+        context_str = f"Contesto: {context}\n\n" if context else ""
+        valid_certainty = ["sicuro", "incerto", "riluttante", "tormentato"]
+
+        prompt = (
+            f"{persona_ctx}"
+            f"RICORDI RILEVANTI:\n{mem_context}\n\n"
+            f"{context_str}"
+            f"OPZIONI:\n{options_str}\n\n"
+            f"Scegli UN'opzione basandoti su chi sei — non su cosa è logico o ottimale.\n"
+            f"Scegli come sceglierebbe una persona con questa storia emotiva.\n\n"
+            f"Restituisci SOLO un JSON:\n"
+            f"{{\n"
+            f'  "chosen": "l\'opzione scelta — copiata esattamente dalla lista",\n'
+            f'  "rejected": {{"opzione": "motivazione breve, viscerale"}},\n'
+            f'  "reasoning": "il ragionamento interno — non neutro, '
+            f'parla da dentro la persona (3-5 frasi)",\n'
+            f'  "emotional_driver": "l\'emozione dominante che ha guidato la scelta (es: paura di fallire)",\n'
+            f'  "certainty": "uno tra: {", ".join(valid_certainty)}"\n'
+            f"}}\n\n"
+            f"La scelta deve sembrare umana, non algoritmica. Rispondi SOLO con il JSON."
+        )
+
+        raw = self._llm.complete(self._system, prompt)
+        data = _parse_json(raw)
+
+        chosen = data.get("chosen", options[0])
+        rejected_raw = data.get("rejected", {})
+        rejected = (
+            [f"{k}: {v}" for k, v in rejected_raw.items()]
+            if isinstance(rejected_raw, dict)
+            else [str(r) for r in rejected_raw if r != chosen]
+        )
+        certainty = data.get("certainty", "incerto")
+        if certainty not in valid_certainty:
+            certainty = "incerto"
+
+        return ChoiceResult(
+            chosen=chosen,
+            rejected=rejected,
+            reasoning=data.get("reasoning", ""),
+            emotional_driver=data.get("emotional_driver", ""),
+            memories_invoked=memories,
+            certainty=certainty,
+            provider_used=self._llm.active_profile.name,
+        )
+
 
 # ─────────────────────────────────────────────
 # HELPERS
 # ─────────────────────────────────────────────
+
 
 def _memories_to_context(memories: list[Memory]) -> str:
     lines = []
@@ -604,6 +955,7 @@ def _parse_json_old(text: str) -> dict:
             except json.JSONDecodeError:
                 pass
     return {}
+
 
 def _parse_json(text: str) -> dict:
     if not text:
@@ -647,13 +999,14 @@ def _parse_json(text: str) -> dict:
 
     return {}
 
+
 def _extract_trailing_line(text: str, prefix: str) -> tuple[str, str]:
     """Estrae l'ultima riga con il prefisso dato e restituisce (valore, testo_rimanente)."""
     lines = text.strip().split("\n")
     for i in range(len(lines) - 1, -1, -1):
         if lines[i].strip().startswith(prefix):
-            value = lines[i].strip()[len(prefix):].strip()
-            body  = "\n".join(lines[:i]).strip()
+            value = lines[i].strip()[len(prefix) :].strip()
+            body = "\n".join(lines[:i]).strip()
             return value, body
     return "", text.strip()
 
