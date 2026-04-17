@@ -34,3 +34,6 @@ print(f"c.memories_invoked => {c.memories_invoked}")        # "riluttante"
 print(f"c.provider_used => {c.provider_used}")        # ragionamento interno, non neutro
 
 
+print(db.count())                    # totale
+print(db.feeling_distribution())     # distribuzione per sentimento
+print(len(db.list_concepts()))       # quanti concetti distinti
