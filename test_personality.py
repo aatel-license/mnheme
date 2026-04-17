@@ -1,8 +1,8 @@
 from mnheme import MemoryDB
 from llm_provider import LLMProvider
 from brain import Brain
-
-db    = MemoryDB("mente.mnheme")
+import sys
+db    = MemoryDB(sys.argv[1] or "mente.mnheme")
 llm   = LLMProvider.from_env(".env")
 brain = Brain(db, llm)
 
@@ -22,10 +22,15 @@ print(w.why)           # motivazione viscerale dai ricordi
 # 3. Sceglie tra opzioni come una persona con quella storia
 c = brain.choose(
     ["restare", "partire", "aspettare"],
-    context="trasferimento lavorativo",
+    context="abbandonare la propria citta'",
     persona=p,
 )
-print(c.chosen)           # "partire"
-print(c.emotional_driver) # "paura di stagnare"
-print(c.certainty)        # "riluttante"
-print(c.reasoning)        # ragionamento interno, non neutro
+print(f"c.chosen =>{c.chosen}")           # "partire"
+print(f"c.emotional_driver => {c.emotional_driver}") # "paura di stagnare"
+print(f"c.certainty => {c.certainty}")        # "riluttante"
+print(f"c.reasoning => {c.reasoning}")        # ragionamento interno, non neutro
+print(f"c.rejected =>{c.rejected}")           # "partire"
+print(f"c.memories_invoked => {c.memories_invoked}")        # "riluttante"
+print(f"c.provider_used => {c.provider_used}")        # ragionamento interno, non neutro
+
+
