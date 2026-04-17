@@ -67,23 +67,25 @@ from llm_provider import LLMProvider, LLMError
 # RISULTATI — PERSONALITÀ E LIBERO ARBITRIO
 # ─────────────────────────────────────────────
 
+
 @dataclass
 class PersonaResult:
-    core_traits:     list[str]
-    values:          list[str]
-    fears:           list[str]
-    desires:         list[str]
-    voice:           str
-    worldview:       str
+    core_traits: list[str]
+    values: list[str]
+    fears: list[str]
+    desires: list[str]
+    voice: str
+    worldview: str
     persona_summary: str
-    provider_used:   str
+    provider_used: str
 
     def __post_init__(self):
         # Garantisce str in tutte le liste — immune a parser che ritorna int/None
         self.core_traits = [str(v) for v in self.core_traits]
-        self.values      = [str(v) for v in self.values]
-        self.fears       = [str(v) for v in self.fears]
-        self.desires     = [str(v) for v in self.desires]
+        self.values = [str(v) for v in self.values]
+        self.fears = [str(v) for v in self.fears]
+        self.desires = [str(v) for v in self.desires]
+
 
 @dataclass
 class PersonaResulta:
@@ -703,18 +705,19 @@ class Brain:
 
         raw = self._llm.complete(self._system, prompt)
         data = _parse_json(raw)
+
         def _to_str_list(val) -> list[str]:
             return [str(v) for v in val] if isinstance(val, list) else []
 
         return PersonaResult(
-            core_traits     = _to_str_list(data.get("core_traits")),
-            values          = _to_str_list(data.get("values")),
-            fears           = _to_str_list(data.get("fears")),
-            desires         = _to_str_list(data.get("desires")),
-            voice           = str(data.get("voice", "")),
-            worldview       = str(data.get("worldview", "")),
-            persona_summary = str(data.get("persona_summary", "")),
-            provider_used   = self._llm.active_profile.name,
+            core_traits=_to_str_list(data.get("core_traits")),
+            values=_to_str_list(data.get("values")),
+            fears=_to_str_list(data.get("fears")),
+            desires=_to_str_list(data.get("desires")),
+            voice=str(data.get("voice", "")),
+            worldview=str(data.get("worldview", "")),
+            persona_summary=str(data.get("persona_summary", "")),
+            provider_used=self._llm.active_profile.name,
         )
         # return PersonaResult(
         #     core_traits=data.get("core_traits", []),
@@ -824,272 +827,6 @@ class Brain:
         )
 
     # ── CHOOSE ───────────────────────────────
-
-    # def choose(
-    #     self,
-    #     options: list[str],
-    #     context: str = "",
-    #     *,
-    #     persona: Optional[PersonaResult] = None,
-    #     max_memories: int = 12,
-    # ) -> ChoiceResult:
-    #     """
-    #     Sceglie tra opzioni basandosi sulla personalità accumulata, non sulla logica.
-
-    #     Non ottimizza — esprime chi è. La scelta è guidata da paure, desideri,
-    #     valori e pattern emotivi distillati dai ricordi.
-
-    #     Parametri
-    #     ---------
-    #     options      : lista di opzioni tra cui scegliere (2-6 consigliato)
-    #     context      : contesto della decisione (opzionale)
-    #     persona      : PersonaResult opzionale — se None, viene estratto dai ricordi
-    #     max_memories : quanti ricordi usare come base della scelta
-
-    #     Esempio
-    #     -------
-    #     >>> c = brain.choose(["restare", "partire", "aspettare"])
-    #     >>> print(c.chosen)          # "partire"
-    #     >>> print(c.emotional_driver) # "paura di stagnare"
-    #     >>> print(c.certainty)       # "riluttante"
-    #     """
-    #     if len(options) < 2:
-    #         raise ValueError("Servono almeno 2 opzioni.")
-
-    #     # Recupera ricordi rilevanti al contesto
-    #     memories: list[Memory] = []
-    #     seen: set[str] = set()
-
-    #     def _add(mems: list[Memory]) -> None:
-    #         for m in mems:
-    #             if m.memory_id not in seen:
-    #                 memories.append(m)
-    #                 seen.add(m.memory_id)
-
-    #     if context:
-    #         _add(self._db.search(context, limit=8))
-
-    #     # Cerca per keyword delle opzioni stesse
-    #     for opt in options:
-    #         for word in opt.split()[:2]:
-    #             _add(self._db.search(word, limit=3))
-
-    #     if not memories:
-    #         _add(self._db.recall_all(limit=max_memories))
-
-    #     memories = memories[:max_memories]
-    #     mem_context = _memories_to_context(memories)
-
-    #     # Persona come contesto se disponibile
-    #     persona_ctx = ""
-    #     if persona:
-    #         persona_ctx = (
-    #             f"CHI SEI:\n"
-    #             f"Tratti: {', '.join(persona.core_traits)}\n"
-    #             f"Valori: {', '.join(persona.values)}\n"
-    #             f"Paure: {', '.join(persona.fears)}\n"
-    #             f"Desideri: {', '.join(persona.desires)}\n"
-    #             f"Visione: {persona.worldview}\n\n"
-    #         )
-
-    #     options_str = "\n".join(f"- {o}" for o in options)
-    #     context_str = f"Contesto: {context}\n\n" if context else ""
-    #     valid_certainty = ["sicuro", "incerto", "riluttante", "tormentato"]
-
-    #     prompt = (
-    #         f"{persona_ctx}"
-    #         f"RICORDI RILEVANTI:\n{mem_context}\n\n"
-    #         f"{context_str}"
-    #         f"OPZIONI:\n{options_str}\n\n"
-    #         f"Scegli UN'opzione basandoti su chi sei — non su cosa è logico o ottimale.\n"
-    #         f"Scegli come sceglierebbe una persona con questa storia emotiva.\n\n"
-    #         f"Restituisci SOLO un JSON:\n"
-    #         f"{{\n"
-    #         f'  "chosen": "l\'opzione scelta — copiata esattamente dalla lista",\n'
-    #         f'  "rejected": {{"opzione": "motivazione breve, viscerale"}},\n'
-    #         f'  "reasoning": "il ragionamento interno — non neutro, '
-    #         f'parla da dentro la persona (3-5 frasi)",\n'
-    #         f'  "emotional_driver": "l\'emozione dominante che ha guidato la scelta (es: paura di fallire)",\n'
-    #         f'  "certainty": "uno tra: {", ".join(valid_certainty)}"\n'
-    #         f"}}\n\n"
-    #         f"La scelta deve sembrare umana, non algoritmica.Non puoi avere campi del JSON vuoti. Rispondi SOLO con il JSON."
-    #     )
-
-    #     raw = self._llm.complete(self._system, prompt)
-    #     data = _parse_json(raw)
-
-    #     chosen = data.get("chosen", options[0])
-    #     rejected_raw = data.get("rejected", {})
-    #     rejected = (
-    #         [f"{k}: {v}" for k, v in rejected_raw.items()]
-    #         if isinstance(rejected_raw, dict)
-    #         else [str(r) for r in rejected_raw if r != chosen]
-    #     )
-    #     certainty = data.get("certainty", "incerto")
-    #     if certainty not in valid_certainty:
-    #         certainty = "incerto"
-
-    #     return ChoiceResult(
-    #         chosen=chosen,
-    #         rejected=rejected,
-    #         reasoning=data.get("reasoning", ""),
-    #         emotional_driver=data.get("emotional_driver", ""),
-    #         memories_invoked=memories,
-    #         certainty=certainty,
-    #         provider_used=self._llm.active_profile.name,
-    #     )
-    # ── CHOOSE ───────────────────────────────
-
-    # def choose(
-    #     self,
-    #     options: list[str],
-    #     context: str = "",
-    #     *,
-    #     persona: Optional[PersonaResult] = None,
-    #     max_memories: int = 12,
-    # ) -> ChoiceResult:
-    #     if len(options) < 2:
-    #         raise ValueError("Servono almeno 2 opzioni.")
-
-    #     memories: list[Memory] = []
-    #     seen: set[str] = set()
-
-    #     def _add(mems: list[Memory]) -> None:
-    #         for m in mems:
-    #             if m.memory_id not in seen:
-    #                 memories.append(m)
-    #                 seen.add(m.memory_id)
-
-    #     if context:
-    #         for word in context.split()[:4]:  # max 4 keyword dal contesto
-    #             _add(self._db.search(word, limit=4))
-    #     # _add(self._db.search(context, limit=8))
-    #     # for opt in options:
-    #     # for word in opt.split()[:2]:
-    #     #     _add(self._db.search(word, limit=3))
-    #     # if not memories:
-    #     #     _add(self._db.recall_all(limit=max_memories))
-
-    #     if not memories:
-    #         # Campiona uniformemente da TUTTI i sentimenti presenti nel DB
-    #         # Il libero arbitrio non ha emozioni privilegiate
-    #         all_mems = self._db.recall_all()
-    #         by_feeling: dict[str, list[Memory]] = {}
-    #         for m in all_mems:
-    #             by_feeling.setdefault(m.feeling, []).append(m)
-
-    #         per_feeling = (
-    #             max(1, max_memories // len(by_feeling)) if by_feeling else max_memories
-    #         )
-    #         for mems in by_feeling.values():
-    #             _add(random.sample(mems, min(per_feeling, len(mems))))
-
-    #         # Se ancora sotto max_memories, completa con i rimanenti
-    #         if len(memories) < max_memories:
-    #             _add(self._db.recall_all(limit=max_memories))
-
-    #     memories = memories[:max_memories]
-    #     mem_context = _memories_to_context(memories)
-
-    #     persona_ctx = ""
-    #     if persona:
-    #         persona_ctx = (
-    #             f"CHI SEI:\n"
-    #             f"Tratti: {', '.join(persona.core_traits)}\n"
-    #             f"Valori: {', '.join(persona.values)}\n"
-    #             f"Paure: {', '.join(persona.fears)}\n"
-    #             f"Desideri: {', '.join(persona.desires)}\n"
-    #             f"Visione: {persona.worldview}\n\n"
-    #         )
-
-    #     # Numera le opzioni esplicitamente → l'LLM risponde con l'indice
-    #     # molto più affidabile del testo esatto
-    #     numbered = "\n".join(f"{i}: {o}" for i, o in enumerate(options))
-    #     context_str = f"Contesto: {context}\n\n" if context else ""
-    #     valid_certainty = ["sicuro", "incerto", "riluttante", "tormentato"]
-
-   
-    #     # Sentimenti presenti nei ricordi campionati (non una lista fissa)
-    #     feelings_in_memories = list({m.feeling for m in memories})
-        
-    #     # Intensità emotiva: quante emozioni diverse → più alta = più conflitto
-    #     emotional_tension = len(feelings_in_memories)
-        
-    #     # Certainty deriva dall'intensità del conflitto emotivo nei ricordi
-    #     # Non è una lista fissa — il modello la genera dalla tensione reale
-    #     certainty_hint = (
-    #         "alta conflittualità emotiva nei ricordi — la certezza sarà bassa"
-    #         if emotional_tension >= 4
-    #         else "emozioni prevalentemente coerenti — la certezza potrà essere alta"
-    #         if emotional_tension <= 2
-    #         else "tensione emotiva moderata"
-    #     )
-
-    #     prompt = (
-    #         f"RICORDI RILEVANTI:\n{mem_context}\n\n"
-    #         f"{context_str}"
-    #         f"OPZIONI:\n{numbered}\n\n"
-    #         f"Sentimenti presenti nei ricordi: {', '.join(feelings_in_memories)}\n"
-    #         f"Tensione emotiva: {certainty_hint}\n\n"
-    #         f"Analizza i ricordi e identifica quale emozione domina rispetto a questa scelta.\n"
-    #         f"Solo dopo considera chi sei:\n{persona_ctx}"
-    #         f"Scegli basandoti sull'interazione tra ricordi e identità — non solo sull'identità.\n\n"
-    #         f"Rispondi SOLO con questo JSON, nessun testo prima o dopo:\n"
-    #         f'{{"chosen_index": <int 0-{len(options)-1}>, '
-    #         f'"reasoning": "<3 frasi che citano emozioni specifiche dai ricordi>", '
-    #         f'"emotional_driver": "<emozione dominante estratta dai ricordi, non inventata>", '
-    #         f'"certainty": "<una parola che descrive il grado di certezza, coerente con la tensione emotiva>", '
-    #         f'"rejected": {{"<opzione>": "<perché no, in termini emotivi>"}}'
-    #         f"}}"
-    #     )
-
-
-    #     raw = self._llm.complete(self._system, prompt)
-    #     data = _parse_json(raw)
-
-    #     # ── Risolvi chosen da chosen_index (robusto) ──────────────
-    #     chosen = options[0]  # fallback di ultima istanza
-
-    #     if "chosen_index" in data:
-    #         try:
-    #             idx = int(data["chosen_index"])
-    #             if 0 <= idx < len(options):
-    #                 chosen = options[idx]
-    #         except (ValueError, TypeError):
-    #             pass
-    #     elif "chosen" in data:
-    #         # Prova match esatto, poi fuzzy (lowercase strip)
-    #         raw_chosen = str(data["chosen"]).strip()
-    #         if raw_chosen in options:
-    #             chosen = raw_chosen
-    #         else:
-    #             # Fuzzy: cerca quale opzione è contenuta nella risposta o viceversa
-    #             raw_lower = raw_chosen.lower()
-    #             for opt in options:
-    #                 if opt.lower() in raw_lower or raw_lower in opt.lower():
-    #                     chosen = opt
-    #                     break
-
-    #     rejected_raw = data.get("rejected", {})
-    #     rejected = (
-    #         [f"{k}: {v}" for k, v in rejected_raw.items()]
-    #         if isinstance(rejected_raw, dict)
-    #         else [str(r) for r in rejected_raw if r != chosen]
-    #     )
-    #     certainty = data.get("certainty", "incerto")
-    #     if certainty not in valid_certainty:
-    #         certainty = "incerto"
-
-    #     return ChoiceResult(
-    #         chosen=chosen,
-    #         rejected=rejected,
-    #         reasoning=data.get("reasoning", ""),
-    #         emotional_driver=data.get("emotional_driver", ""),
-    #         memories_invoked=memories,
-    #         certainty=certainty,
-    #         provider_used=self._llm.active_profile.name,
-    #     )
-
     def choose(
         self,
         options: list[str],
@@ -1101,44 +838,140 @@ class Brain:
         if len(options) < 2:
             raise ValueError("Servono almeno 2 opzioni.")
 
-        memories: list[Memory] = []
-        seen: set[str] = set()
-
-        def _add(mems: list[Memory]) -> None:
-            for m in mems:
-                if m.memory_id not in seen:
-                    memories.append(m)
-                    seen.add(m.memory_id)
-
-        if context:
-            for word in context.split()[:4]:
-                _add(self._db.search(word, limit=4))
-
-        if not memories:
-            all_mems = self._db.recall_all()
-            # Shuffle prima di raggruppare — ogni run ha un campione diverso
-            random.shuffle(all_mems)
-
-            by_feeling: dict[str, list[Memory]] = {}
-            for m in all_mems:
-                by_feeling.setdefault(m.feeling, []).append(m)
-
-            per_feeling = (
-                max(1, max_memories // len(by_feeling)) if by_feeling else max_memories
+        # ── Carica tutti i ricordi e ordina per timestamp ────────
+        all_mems = self._db.recall_all()
+        if not all_mems:
+            return ChoiceResult(
+                chosen           = options[0],
+                rejected         = [],
+                reasoning        = "",
+                emotional_driver = "",
+                memories_invoked = [],
+                certainty        = "incerto",
+                provider_used    = self._llm.active_profile.name,
             )
-            for mems in by_feeling.values():
-                _add(random.sample(mems, min(per_feeling, len(mems))))
 
-            if len(memories) < max_memories:
-                remaining = [m for m in all_mems if m.memory_id not in seen]
-                _add(random.sample(
-                    remaining,
-                    min(max_memories - len(memories), len(remaining))
-                ))
+        all_mems.sort(key=lambda m: m.timestamp)
+        n = len(all_mems)
 
-        memories = memories[:max_memories]
+        # ── Recency bias: peso lineare 1.0 → 3.0 ────────────────
+        recency_weights = [1.0 + (i / n) * 2.0 for i in range(n)]
+
+        # ── Peak feelings emergono dalla distribuzione reale ─────
+        # Emozioni rare = alta salienza (picco)
+        # Emozioni comuni = bassa salienza (rumore di fondo)
+        feeling_dist    = self._db.feeling_distribution()
+        total_f         = sum(feeling_dist.values()) or 1
+        feeling_salience = {
+            f: 1.0 - (count / total_f)
+            for f, count in feeling_dist.items()
+        }
+
+        # ── End bonus: ultimi 20% dei ricordi ───────────────────
+        END_BONUS  = 1.5
+        end_cutoff = int(n * 0.8)
+
+        weights = []
+        for i, m in enumerate(all_mems):
+            w  = recency_weights[i]
+            w *= 1.0 + feeling_salience.get(m.feeling, 0.5)
+            if i >= end_cutoff:
+                w *= END_BONUS
+            weights.append(w)
+
+        # ── Emotional congruence con il contesto ─────────────────
+        if context:
+            context_lower = context.lower()
+            context_words = context_lower.split()[:4]
+            for i, m in enumerate(all_mems):
+                if any(word in m.content.lower() for word in context_words):
+                    weights[i] *= 2.0
+
+        # ── Rumore casuale — stessa situazione, ricordi diversi ──
+        weights = [w * random.uniform(0.85, 1.15) for w in weights]
+
+        # ── Sample pesato senza reinserimento ────────────────────
+        total_w       = sum(weights)
+        probs         = [w / total_w for w in weights]
+        k             = min(max_memories, n)
+        indices       = list(range(n))
+        current_probs = list(probs)
+        sampled_idx   = []
+
+        for _ in range(k):
+            if not indices:
+                break
+            total      = sum(current_probs)
+            normalized = [p / total for p in current_probs]
+            pos        = random.choices(range(len(indices)), weights=normalized, k=1)[0]
+            sampled_idx.append(indices[pos])
+            indices.pop(pos)
+            current_probs.pop(pos)
+
+        memories = [all_mems[i] for i in sampled_idx]
+        seen     = {m.memory_id for m in memories}
+
+        # ── Context boost: aggiunge ricordi contestuali post-sample
+        # Non è un gate — non bypassa il campionamento
+        if context:
+            boost = []
+            for word in context.split()[:4]:
+                for m in self._db.search(word, limit=3):
+                    if m.memory_id not in seen:
+                        boost.append(m)
+                        seen.add(m.memory_id)
+            if boost:
+                # Sostituisce i ricordi in coda (peso più basso) con quelli contestuali
+                memories = memories[:max_memories - len(boost)] + boost
+
+                # ── Diversity cap — nessun cluster temporale può dominare ──
+        # Divide i ricordi in 3 fasce temporali e cappucci quante
+        # slot può occupare ciascuna fascia
+        tier_size  = n // 3
+        tier_cap   = max(2, max_memories // 3)   # max slot per fascia
+        tier_count = [0, 0, 0]
+
+        def _tier(idx: int) -> int:
+            if idx < tier_size:     return 0   # vecchi
+            if idx < tier_size * 2: return 1   # medi
+            return 2                            # recenti
+
+        indices_filtered = []
+        probs_filtered   = []
+        for idx, p in sorted(
+            enumerate(probs), key=lambda x: x[1], reverse=True
+        ):
+            t = _tier(idx)
+            if tier_count[t] < tier_cap:
+                indices_filtered.append(idx)
+                probs_filtered.append(p)
+            if len(indices_filtered) >= k * 3:   # pool 3x per dare varietà al sample
+                break
+
+        # Renormalizza e campiona sul pool filtrato
+        total_fp     = sum(probs_filtered)
+        probs_norm   = [p / total_fp for p in probs_filtered]
+        sampled_idx  = random.choices(
+            indices_filtered,
+            weights = probs_norm,
+            k       = min(k, len(indices_filtered)),
+        )
+        # Deduplica mantenendo ordine
+        seen_idx = set()
+        sampled_idx_dedup = []
+        for i in sampled_idx:
+            if i not in seen_idx:
+                sampled_idx_dedup.append(i)
+                seen_idx.add(i)
+
+        memories = [all_mems[i] for i in sampled_idx_dedup]
+
+        # ── Diversity cap — nessun cluster temporale può dominare ──
+
+        # memories    = memories[:max_memories]
         mem_context = _memories_to_context(memories)
 
+        # ── Variabili prompt ─────────────────────────────────────
         persona_ctx = ""
         if persona:
             persona_ctx = (
@@ -1150,14 +983,12 @@ class Brain:
                 f"Visione: {persona.worldview}\n\n"
             )
 
-        # Anonimizza le opzioni con etichette neutre (A, B, C...)
-        # Impedisce al modello di fare associazioni semantiche dirette
+        # Etichette neutre — impedisce associazioni semantiche dirette
         # es: "orizzonte/speranza" → "partire" per collisione lessicale
-        labels     = [chr(65 + i) for i in range(len(options))]   # A, B, C...
-        labeled    = "\n".join(f"{l}: [opzione {l}]" for l in labels)
-        options_map = "\n".join(f"{l} = {o}" for l, o in zip(labels, options))
-
-        context_str = f"Contesto: {context}\n\n" if context else ""
+        labels         = [chr(65 + i) for i in range(len(options))]
+        labeled        = "\n".join(f"{l}: [opzione {l}]" for l in labels)
+        schema_options = " | ".join(f"{l}={o}" for l, o in zip(labels, options))
+        context_str    = f"Contesto: {context}\n\n" if context else ""
 
         feelings_in_memories = list({m.feeling for m in memories})
         emotional_tension    = len(feelings_in_memories)
@@ -1169,30 +1000,32 @@ class Brain:
             else "tensione emotiva moderata"
         )
 
-        schema_options = " | ".join(f"{l}={o}" for l, o in zip(labels, options))
-
         prompt = (
-            f"RICORDI RILEVANTI:\n{mem_context}\n\n"
+            f"RICORDI RILEVANTI (filtrati per recency, picco emotivo e contesto):\n{mem_context}\n\n"
             f"{context_str}"
             f"OPZIONI (etichette neutre — evita associazioni semantiche):\n{labeled}\n\n"
             f"Sentimenti nei ricordi: {', '.join(feelings_in_memories)}\n"
             f"Tensione emotiva: {certainty_hint}\n\n"
-            f"Analizza i ricordi per il loro peso emotivo puro — ignora le etichette delle opzioni.\n"
-            f"Solo dopo considera chi sei:\n{persona_ctx}"
-            f"Scegli l'etichetta (A/B/C...) che corrisponde allo stato emotivo dominante nei ricordi.\n\n"
+            f"Scegli come una mente umana reale:\n"
+            f"- I ricordi recenti pesano più dei vecchi\n"
+            f"- Un'emozione rara e intensa vale più di molte emozioni comuni\n"
+            f"- Solo i ricordi semanticamente rilevanti alla scelta contano\n"
+            f"- Non contare le occorrenze — risuona con il peso psicologico\n\n"
+            f"Chi sei:\n{persona_ctx}"
+            f"Scegli l'etichetta (A/B/C...) che emerge da questo processo.\n\n"
             f"Rispondi SOLO con questo JSON, nessun testo prima o dopo:\n"
             f'{{"chosen_index": <int 0-{len(options) - 1}>, '
-            f'"reasoning": "<3 frasi che citano emozioni specifiche dai ricordi>", '
-            f'"emotional_driver": "<emozione dominante estratta dai ricordi, non inventata>", '
+            f'"reasoning": "<3 frasi sul peso psicologico specifico, non sulla frequenza>", '
+            f'"emotional_driver": "<emozione dominante per intensità e recency>", '
             f'"certainty": "<parola coerente con la tensione emotiva>", '
-            f'"rejected": {{"<nome reale ({schema_options})>": "<perché no, in termini emotivi>"}}'
+            f'"rejected": {{"<nome reale ({schema_options})>": "<perché no>"}}'
             f"}}"
         )
 
         raw  = self._llm.complete(self._system, prompt)
         data = _parse_json(raw)
 
-        # ── chosen ────────────────────────────────────────────
+        # ── chosen ───────────────────────────────────────────────
         chosen = options[0]
         if "chosen_index" in data:
             try:
@@ -1212,82 +1045,234 @@ class Brain:
                         chosen = opt
                         break
 
-        # ── reasoning — normalizza lista → stringa ────────────
+        # ── reasoning — normalizza lista → stringa ───────────────
         raw_reasoning = data.get("reasoning", "")
         if isinstance(raw_reasoning, list):
             reasoning = " ".join(str(s).strip(" .") for s in raw_reasoning if s) + "."
         else:
             reasoning = str(raw_reasoning)
 
-        # ── certainty — estrae solo la prima parola ───────────
+        # ── certainty — estrae solo la prima parola ───────────────
         raw_certainty = str(data.get("certainty", "incerto")).strip()
-        certainty = raw_certainty.split()[0].rstrip(".,;:") if raw_certainty else "incerto"
+        certainty     = raw_certainty.split()[0].rstrip(".,;:") if raw_certainty else "incerto"
 
         # ── rejected — rimappa etichette neutre → opzioni reali ──
-        # Il modello a volte scrive "A: motivo" invece di "restare: motivo"
         label_to_option = {l: o for l, o in zip(labels, options)}
-
-        rejected_raw = data.get("rejected", {})
+        rejected_raw    = data.get("rejected", {})
         if isinstance(rejected_raw, dict):
             rejected = []
             for k, v in rejected_raw.items():
-                k_clean = k.strip().upper().rstrip(":").strip()
-                # Se la chiave è un'etichetta neutrale (A/B/C) → rimappa
+                k_clean  = k.strip().upper().rstrip(":").strip()
                 real_key = label_to_option.get(k_clean, k)
                 rejected.append(f"{real_key}: {v}")
         else:
             rejected = [str(r) for r in rejected_raw if r != chosen]
 
+        # ── fallback robusti se il modello risponde parzialmente ──
+        emotional_driver = data.get("emotional_driver") or ""
+        if not emotional_driver and feelings_in_memories:
+            # Fallback: l'emozione più saliente tra quelle nei ricordi
+            emotional_driver = max(
+                feelings_in_memories,
+                key=lambda f: feeling_salience.get(f, 0.5)
+            )
         return ChoiceResult(
             chosen           = chosen,
             rejected         = rejected,
             reasoning        = reasoning,
-            emotional_driver = data.get("emotional_driver", ""),
+            emotional_driver = emotional_driver,
             memories_invoked = memories,
             certainty        = certainty,
             provider_used    = self._llm.active_profile.name,
         )
-"""
-        raw  = self._llm.complete(self._system, prompt)
-        data = _parse_json(raw)
+    # def choose(
+    #     self,
+    #     options: list[str],
+    #     context: str = "",
+    #     *,
+    #     persona: Optional[PersonaResult] = None,
+    #     max_memories: int = 12,
+    # ) -> ChoiceResult:
+    #     if len(options) < 2:
+    #         raise ValueError("Servono almeno 2 opzioni.")
 
-        chosen = options[0]  # fallback di ultima istanza
+    #     memories: list[Memory] = []
+    #     seen: set[str] = set()
 
-        if "chosen_index" in data:
-            try:
-                idx = int(data["chosen_index"])
-                if 0 <= idx < len(options):
-                    chosen = options[idx]
-            except (ValueError, TypeError):
-                pass
-        elif "chosen" in data:
-            raw_chosen = str(data["chosen"]).strip()
-            if raw_chosen in options:
-                chosen = raw_chosen
-            else:
-                raw_lower = raw_chosen.lower()
-                for opt in options:
-                    if opt.lower() in raw_lower or raw_lower in opt.lower():
-                        chosen = opt
-                        break
+    #     def _add(mems: list[Memory]) -> None:
+    #         for m in mems:
+    #             if m.memory_id not in seen:
+    #                 memories.append(m)
+    #                 seen.add(m.memory_id)
 
-        rejected_raw = data.get("rejected", {})
-        rejected = (
-            [f"{k}: {v}" for k, v in rejected_raw.items()]
-            if isinstance(rejected_raw, dict)
-            else [str(r) for r in rejected_raw if r != chosen]
-        )
+    #     if context:
+    #         for word in context.split()[:4]:
+    #             _add(self._db.search(word, limit=4))
 
-        return ChoiceResult(
-            chosen          = chosen,
-            rejected        = rejected,
-            reasoning       = data.get("reasoning", ""),
-            emotional_driver= data.get("emotional_driver", ""),
-            memories_invoked= memories,
-            certainty       = data.get("certainty", "incerto"),
-            provider_used   = self._llm.active_profile.name,
-        )
-"""
+    #     if not memories:
+    #         all_mems = self._db.recall_all(oldest_first=True)
+
+    #         if all_mems:
+    #             n = len(all_mems)
+
+    #             recency_weights = [1.0 + (i / n) * 2.0 for i in range(n)]
+
+    #             PEAK_FEELINGS = {"rabbia", "paura", "amore", "gioia", "vergogna"}
+    #             END_BONUS     = 1.5
+    #             end_cutoff    = int(n * 0.8)
+
+    #             weights = []
+    #             for i, m in enumerate(all_mems):
+    #                 w = recency_weights[i]
+    #                 if m.feeling in PEAK_FEELINGS:
+    #                     w *= 1.8
+    #                 if i >= end_cutoff:
+    #                     w *= END_BONUS
+    #                 weights.append(w)
+
+    #             if context:
+    #                 context_lower = context.lower()
+    #                 for i, m in enumerate(all_mems):
+    #                     if any(
+    #                         word in m.content.lower()
+    #                         for word in context_lower.split()[:4]
+    #                     ):
+    #                         weights[i] *= 2.0
+
+    #             # Rumore casuale — stessa situazione, ricordi diversi ad ogni run
+    #             noise   = [random.uniform(0.85, 1.15) for _ in range(n)]
+    #             weights = [w * noise[i] for i, w in enumerate(weights)]
+
+    #             total_w = sum(weights)
+    #             probs   = [w / total_w for w in weights]
+
+    #             k               = min(max_memories, n)
+    #             indices         = list(range(n))
+    #             sampled_indices = []
+    #             current_probs   = list(probs)
+
+    #             for _ in range(k):
+    #                 if not indices:
+    #                     break
+    #                 total      = sum(current_probs)
+    #                 normalized = [p / total for p in current_probs]
+    #                 chosen_pos = random.choices(
+    #                     range(len(indices)), weights=normalized, k=1
+    #                 )[0]
+    #                 sampled_indices.append(indices[chosen_pos])
+    #                 indices.pop(chosen_pos)
+    #                 current_probs.pop(chosen_pos)
+
+    #             for idx in sampled_indices:
+    #                 _add([all_mems[idx]])
+
+    #     memories    = memories[:max_memories]
+    #     mem_context = _memories_to_context(memories)
+
+    #     # ── Variabili prompt — tutte definite qui, non dentro i branch ──
+    #     persona_ctx = ""
+    #     if persona:
+    #         persona_ctx = (
+    #             f"CHI SEI:\n"
+    #             f"Tratti: {', '.join(persona.core_traits)}\n"
+    #             f"Valori: {', '.join(persona.values)}\n"
+    #             f"Paure: {', '.join(persona.fears)}\n"
+    #             f"Desideri: {', '.join(persona.desires)}\n"
+    #             f"Visione: {persona.worldview}\n\n"
+    #         )
+
+    #     labels         = [chr(65 + i) for i in range(len(options))]
+    #     labeled        = "\n".join(f"{l}: [opzione {l}]" for l in labels)
+    #     schema_options = " | ".join(f"{l}={o}" for l, o in zip(labels, options))
+    #     context_str    = f"Contesto: {context}\n\n" if context else ""
+
+    #     feelings_in_memories = list({m.feeling for m in memories})
+    #     emotional_tension    = len(feelings_in_memories)
+    #     certainty_hint = (
+    #         "alta conflittualità emotiva — la certezza sarà bassa"
+    #         if emotional_tension >= 4
+    #         else "emozioni prevalentemente coerenti — la certezza potrà essere alta"
+    #         if emotional_tension <= 2
+    #         else "tensione emotiva moderata"
+    #     )
+
+    #     prompt = (
+    #         f"RICORDI RILEVANTI (filtrati per recency, picco emotivo e contesto):\n{mem_context}\n\n"
+    #         f"{context_str}"
+    #         f"OPZIONI (etichette neutre — evita associazioni semantiche):\n{labeled}\n\n"
+    #         f"Sentimenti nei ricordi: {', '.join(feelings_in_memories)}\n"
+    #         f"Tensione emotiva: {certainty_hint}\n\n"
+    #         f"Scegli come una mente umana reale:\n"
+    #         f"- I ricordi recenti pesano più dei vecchi\n"
+    #         f"- Un picco emotivo intenso vale più di molti ricordi neutri\n"
+    #         f"- Solo i ricordi semanticamente rilevanti alla scelta contano\n"
+    #         f"- Non contare le occorrenze — risuona con il peso psicologico\n\n"
+    #         f"Chi sei:\n{persona_ctx}"
+    #         f"Scegli l'etichetta (A/B/C...) che emerge da questo processo.\n\n"
+    #         f"Rispondi SOLO con questo JSON, nessun testo prima o dopo:\n"
+    #         f'{{"chosen_index": <int 0-{len(options) - 1}>, '
+    #         f'"reasoning": "<3 frasi sul peso psicologico specifico, non sulla frequenza>", '
+    #         f'"emotional_driver": "<emozione dominante per intensità e recency>", '
+    #         f'"certainty": "<parola coerente con la tensione emotiva>", '
+    #         f'"rejected": {{"<nome reale ({schema_options})>": "<perché no>"}}'
+    #         f"}}"
+    #     )
+
+    #     raw  = self._llm.complete(self._system, prompt)
+    #     data = _parse_json(raw)
+
+    #     # ── chosen ────────────────────────────────────────────
+    #     chosen = options[0]
+    #     if "chosen_index" in data:
+    #         try:
+    #             idx = int(data["chosen_index"])
+    #             if 0 <= idx < len(options):
+    #                 chosen = options[idx]
+    #         except (ValueError, TypeError):
+    #             pass
+    #     elif "chosen" in data:
+    #         raw_chosen = str(data["chosen"]).strip()
+    #         if raw_chosen in options:
+    #             chosen = raw_chosen
+    #         else:
+    #             raw_lower = raw_chosen.lower()
+    #             for opt in options:
+    #                 if opt.lower() in raw_lower or raw_lower in opt.lower():
+    #                     chosen = opt
+    #                     break
+
+    #     # ── reasoning — normalizza lista → stringa ────────────
+    #     raw_reasoning = data.get("reasoning", "")
+    #     if isinstance(raw_reasoning, list):
+    #         reasoning = " ".join(str(s).strip(" .") for s in raw_reasoning if s) + "."
+    #     else:
+    #         reasoning = str(raw_reasoning)
+
+    #     # ── certainty — estrae solo la prima parola ───────────
+    #     raw_certainty = str(data.get("certainty", "incerto")).strip()
+    #     certainty     = raw_certainty.split()[0].rstrip(".,;:") if raw_certainty else "incerto"
+
+    #     # ── rejected — rimappa etichette neutre → opzioni reali ──
+    #     label_to_option = {l: o for l, o in zip(labels, options)}
+    #     rejected_raw    = data.get("rejected", {})
+    #     if isinstance(rejected_raw, dict):
+    #         rejected = []
+    #         for k, v in rejected_raw.items():
+    #             k_clean  = k.strip().upper().rstrip(":").strip()
+    #             real_key = label_to_option.get(k_clean, k)
+    #             rejected.append(f"{real_key}: {v}")
+    #     else:
+    #         rejected = [str(r) for r in rejected_raw if r != chosen]
+
+    #     return ChoiceResult(
+    #         chosen           = chosen,
+    #         rejected         = rejected,
+    #         reasoning        = reasoning,
+    #         emotional_driver = data.get("emotional_driver", ""),
+    #         memories_invoked = memories,
+    #         certainty        = certainty,
+    #         provider_used    = self._llm.active_profile.name,
+    #     )
 # ─────────────────────────────────────────────
 # HELPERS
 # ─────────────────────────────────────────────
