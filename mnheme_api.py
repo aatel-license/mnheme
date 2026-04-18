@@ -236,6 +236,65 @@ class BrainStatusOut(BaseModel):
     model         : Optional[str]
     total_memories: int
 
+# ── Schemi Brain — Persona, Will, Choose ────────
+
+class PersonaOut(BaseModel):
+    core_traits     : List[str]
+    values          : List[str]
+    fears           : List[str]
+    desires         : List[str]
+    voice           : str
+    worldview       : str
+    persona_summary : str
+    provider_used   : str
+
+class WillIn(BaseModel):
+    seed_feeling : Optional[str] = Field(
+        None,
+        json_schema_extra={"example": "rabbia"},
+        description="Se fornito, campiona ricordi da questo sentimento specifico",
+    )
+    n_memories   : int = Field(
+        10,
+        json_schema_extra={"example": 10},
+        description="Numero di ricordi usati come substrato dell'impulso",
+    )
+
+class WillOut(BaseModel):
+    impulse       : str
+    impulse_type  : str
+    action        : str
+    why           : str
+    memories_used : int
+    provider_used : str
+
+class ChooseIn(BaseModel):
+    options      : List[str] = Field(
+        ...,
+        min_length=2,
+        json_schema_extra={"example": ["restare", "partire", "aspettare"]},
+        description="Le opzioni tra cui scegliere (minimo 2)",
+    )
+    context      : str = Field(
+        "",
+        json_schema_extra={"example": "Devo decidere se lasciare il lavoro attuale"},
+        description="Contesto opzionale che orienta la scelta",
+    )
+    max_memories : int = Field(
+        12,
+        json_schema_extra={"example": 12},
+        description="Numero massimo di ricordi usati per la scelta",
+    )
+
+class ChooseOut(BaseModel):
+    chosen           : str
+    rejected         : List[str]
+    reasoning        : str
+    emotional_driver : str
+    certainty        : str
+    memories_used    : int
+    provider_used    : str
+
 
 # ── Brain endpoints ──────────────────────────────
 
@@ -372,10 +431,104 @@ def brain_summarize(body: SummarizeIn):
         raise HTTPException(500, detail=str(e))
 
 
+@app.get("/brain/persona", response_model=PersonaOut,
+         summary="Identità psicologica stabile — tratti, valori, paure, desideri, visione del mondo")
+def brain_persona():
+    """
+    Costruisce un profilo identitario strutturato dall'intera storia di ricordi.
+    Diverso da /brain/introspect: non è narrativo, è un profilo persistente
+    riusabile come contesto per will e choose.
+    """
+    b = get_brain()
+    try:
+        r = b.persona()
+        return PersonaOut(
+            core_traits     = r.core_traits,
+            values          = r.values,
+            fears           = r.fears,
+            desires         = r.desires,
+            voice           = r.voice,
+            worldview       = r.worldview,
+            persona_summary = r.persona_summary,
+            provider_used   = r.provider_used,
+        )
+    except ValueError as e:
+        raise HTTPException(400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(500, detail=str(e))
+
+
+@app.post("/brain/will", response_model=WillOut,
+          summary="Libero arbitrio — impulso spontaneo generato dallo stato interno della memoria")
+def brain_will(body: WillIn):
+    """
+    Il cervello attinge ai propri ricordi e genera un impulso autonomo:
+    cosa vuole, teme, rimpiange o rifiuta — senza stimolo esterno.
+
+    Parametri opzionali:
+    - `seed_feeling`: forza il campionamento da un sentimento specifico
+    - `n_memories`: quanti ricordi usare come substrato
+    """
+    b = get_brain()
+    try:
+        r = b.will(
+            seed_feeling = body.seed_feeling or None,
+            n_memories   = body.n_memories,
+        )
+        return WillOut(
+            impulse       = r.impulse,
+            impulse_type  = r.impulse_type,
+            action        = r.action,
+            why           = r.why,
+            memories_used = len(r.origin_memories),
+            provider_used = r.provider_used,
+        )
+    except ValueError as e:
+        raise HTTPException(400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(500, detail=str(e))
+
+
+@app.post("/brain/choose", response_model=ChooseOut,
+          summary="Scelta guidata dalla personalità — decide tra opzioni usando il peso emotivo dei ricordi")
+def brain_choose(body: ChooseIn):
+    """
+    Sceglie tra le opzioni fornite come farebbe una mente umana reale:
+    - recency bias (ricordi recenti pesano di più)
+    - peak feeling (emozioni rare e intense valgono di più)
+    - congruenza emotiva con il contesto
+    - rumore stocastico (stessa situazione, esito leggermente diverso)
+
+    Minimo 2 opzioni richieste.
+    """
+    b = get_brain()
+    if len(body.options) < 2:
+        raise HTTPException(400, detail="Servono almeno 2 opzioni.")
+    try:
+        r = b.choose(
+            options      = body.options,
+            context      = body.context,
+            max_memories = body.max_memories,
+        )
+        return ChooseOut(
+            chosen           = r.chosen,
+            rejected         = r.rejected,
+            reasoning        = r.reasoning,
+            emotional_driver = r.emotional_driver,
+            certainty        = r.certainty,
+            memories_used    = len(r.memories_invoked),
+            provider_used    = r.provider_used,
+        )
+    except ValueError as e:
+        raise HTTPException(400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(500, detail=str(e))
+
+
 def main():
     import uvicorn
     uvicorn.run(
-        "mnheme_api:app",          # file:variabile FastAPI
+        "mnheme_api:app",
         host="0.0.0.0",
         port=8123,
         reload=True

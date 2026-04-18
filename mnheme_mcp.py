@@ -314,6 +314,76 @@ TOOLS = [
         ),
         inputSchema={"type": "object", "properties": {}},
     ),
+
+    Tool(
+        name="brain_persona",
+        description=(
+            "[Richiede BRAIN_ENABLED=true] "
+            "Costruisce un'identità psicologica stabile e strutturata dall'intera storia di ricordi. "
+            "Ritorna tratti caratteriali, valori profondi, paure, desideri, stile cognitivo, "
+            "visione del mondo e un persona_summary usabile come system prompt. "
+            "Diverso da brain_introspect: non è narrativo, è un profilo persistente e riusabile."
+        ),
+        inputSchema={"type": "object", "properties": {}},
+    ),
+
+    Tool(
+        name="brain_will",
+        description=(
+            "[Richiede BRAIN_ENABLED=true] "
+            "Genera un impulso spontaneo senza stimolo esterno — il libero arbitrio. "
+            "Il cervello attinge ai propri ricordi e decide autonomamente cosa vuole, "
+            "teme, rimpiange o rifiuta in questo momento. "
+            "Ritorna: impulso in prima persona, tipo (desiderio/paura/curiosità/ribellione/rimpianto), "
+            "azione concreta e motivazione viscerale."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "seed_feeling": {
+                    "type": "string",
+                    "description": f"Forza il campionamento da un sentimento specifico. Valori: {VALID_FEELINGS}",
+                },
+                "n_memories": {
+                    "type": "integer",
+                    "description": "Numero di ricordi usati come substrato dell'impulso (default: 10)",
+                },
+            },
+        },
+    ),
+
+    Tool(
+        name="brain_choose",
+        description=(
+            "[Richiede BRAIN_ENABLED=true] "
+            "Sceglie tra opzioni come farebbe una mente umana reale, "
+            "guidata dal peso emotivo dei ricordi. "
+            "Applica recency bias, peak feeling (emozioni rare pesano di più), "
+            "congruenza emotiva con il contesto e leggero rumore stocastico. "
+            "Ritorna: opzione scelta, opzioni scartate con motivazione, "
+            "ragionamento viscerale, emozione dominante e certezza della scelta."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "options": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "minItems": 2,
+                    "description": "Le opzioni tra cui scegliere (minimo 2)",
+                },
+                "context": {
+                    "type": "string",
+                    "description": "Contesto opzionale che orienta la scelta emotiva",
+                },
+                "max_memories": {
+                    "type": "integer",
+                    "description": "Numero massimo di ricordi usati per decidere (default: 12)",
+                },
+            },
+            "required": ["options"],
+        },
+    ),
 ]
 
 # ── Server ────────────────────────────────────────────────────────────────────
@@ -393,7 +463,10 @@ async def handle_call_tool(name: str, arguments: dict) -> list[TextContent]:
             return _ok(db.storage_info())
 
         # ── Brain tools ───────────────────────────────────────────────────────
-        elif name in ("brain_perceive", "brain_ask", "brain_reflect", "brain_dream", "brain_introspect"):
+        elif name in (
+            "brain_perceive", "brain_ask", "brain_reflect", "brain_dream",
+            "brain_introspect", "brain_persona", "brain_will", "brain_choose",
+        ):
             if brain is None:
                 return _err(
                     "Brain non disponibile. "
@@ -440,6 +513,52 @@ async def handle_call_tool(name: str, arguments: dict) -> list[TextContent]:
                     "emotional_map":     getattr(r, "emotional_map", {}),
                 })
 
+            elif name == "brain_persona":
+                r = brain.persona()
+                return _ok({
+                    "core_traits":     r.core_traits,
+                    "values":          r.values,
+                    "fears":           r.fears,
+                    "desires":         r.desires,
+                    "voice":           r.voice,
+                    "worldview":       r.worldview,
+                    "persona_summary": r.persona_summary,
+                    "provider_used":   r.provider_used,
+                })
+
+            elif name == "brain_will":
+                r = brain.will(
+                    seed_feeling = args.get("seed_feeling") or None,
+                    n_memories   = args.get("n_memories", 10),
+                )
+                return _ok({
+                    "impulse":       r.impulse,
+                    "impulse_type":  r.impulse_type,
+                    "action":        r.action,
+                    "why":           r.why,
+                    "memories_used": len(r.origin_memories),
+                    "provider_used": r.provider_used,
+                })
+
+            elif name == "brain_choose":
+                options = args.get("options", [])
+                if len(options) < 2:
+                    return _err("Servono almeno 2 opzioni.")
+                r = brain.choose(
+                    options      = options,
+                    context      = args.get("context", ""),
+                    max_memories = args.get("max_memories", 12),
+                )
+                return _ok({
+                    "chosen":           r.chosen,
+                    "rejected":         r.rejected,
+                    "reasoning":        r.reasoning,
+                    "emotional_driver": r.emotional_driver,
+                    "certainty":        r.certainty,
+                    "memories_used":    len(r.memories_invoked),
+                    "provider_used":    r.provider_used,
+                })
+
         else:
             return _err(f"Tool sconosciuto: '{name}'")
 
@@ -474,8 +593,6 @@ async def _run_sse(port: int) -> None:
 
         print(f"[mnheme_mcp] SSE server su http://0.0.0.0:{port}/sse", file=sys.stderr)
 
-        # Fix: usa Server.serve() invece di uvicorn.run() per evitare
-        # "asyncio.run() cannot be called from a running event loop"
         config    = uvicorn.Config(app, host="0.0.0.0", port=port)
         uv_server = uvicorn.Server(config)
         await uv_server.serve()
