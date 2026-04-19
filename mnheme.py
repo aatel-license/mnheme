@@ -74,8 +74,8 @@ class Feeling(str, Enum):
     SORPRESA       = "sorpresa"
     NOIA           = "noia"
     CURIOSITA      = "curiosità"
-    NEUTRALITA      = "neutralità"
-
+    NEUTRALITA     = "neutralità"
+    MERAVIGLIA     = "meraviglia" 
 
 class MediaType(str, Enum):
     TEXT  = "text"
