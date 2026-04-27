@@ -44,9 +44,12 @@ class MockLLM(LLMProvider):
 
 
 def make_brain(tmp_path=None):
+    import os
     if tmp_path is None:
         tmp_path = tempfile.mkdtemp()
-    db = MemoryDB(str(tmp_path / "test.mnheme"))
+    else:
+        tmp_path = str(tmp_path)
+    db = MemoryDB(os.path.join(tmp_path, "test.mnheme"))
     mock = MockLLM()
     # Carica ricordi di base
     db.remember("Debito", Feeling.ANSIA, "Ho firmato il mutuo.")
@@ -57,9 +60,12 @@ def make_brain(tmp_path=None):
 
 def make_empty_brain(tmp_path=None):
     """Crea un Brain con DB vuoto (path temporaneo)."""
+    import os
     if tmp_path is None:
         tmp_path = tempfile.mkdtemp()
-    db = MemoryDB(str(tmp_path / "empty.mnheme"))
+    else:
+        tmp_path = str(tmp_path)
+    db = MemoryDB(os.path.join(tmp_path, "empty.mnheme"))
     mock = MockLLM()
     return Brain(db, mock)
 

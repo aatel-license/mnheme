@@ -1,0 +1,24 @@
+[run]
+source = .
+omit =
+    tests/*
+    .venv/*
+    mnheme_live.py
+    mnheme_live_kokoro.py
+    mnheme_mcp.py
+    mnheme_benchmark.py
+    mnheme_api.py
+    simple_memories_generator.py
+    advanced_human_simulator_memories_generator.py
+    examples.py
+    start.sh
+    start.bat
+    apps/*
+
+[report]
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    raise NotImplementedError
+    if __name__ == .__main__.:
+    pass
