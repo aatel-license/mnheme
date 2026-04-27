@@ -842,13 +842,13 @@ class Brain:
         all_mems = self._db.recall_all()
         if not all_mems:
             return ChoiceResult(
-                chosen           = options[0],
-                rejected         = [],
-                reasoning        = "",
-                emotional_driver = "",
-                memories_invoked = [],
-                certainty        = "incerto",
-                provider_used    = self._llm.active_profile.name,
+                chosen=options[0],
+                rejected=[],
+                reasoning="",
+                emotional_driver="",
+                memories_invoked=[],
+                certainty="incerto",
+                provider_used=self._llm.active_profile.name,
             )
 
         all_mems.sort(key=lambda m: m.timestamp)
@@ -860,20 +860,19 @@ class Brain:
         # ── Peak feelings emergono dalla distribuzione reale ─────
         # Emozioni rare = alta salienza (picco)
         # Emozioni comuni = bassa salienza (rumore di fondo)
-        feeling_dist    = self._db.feeling_distribution()
-        total_f         = sum(feeling_dist.values()) or 1
+        feeling_dist = self._db.feeling_distribution()
+        total_f = sum(feeling_dist.values()) or 1
         feeling_salience = {
-            f: 1.0 - (count / total_f)
-            for f, count in feeling_dist.items()
+            f: 1.0 - (count / total_f) for f, count in feeling_dist.items()
         }
 
         # ── End bonus: ultimi 20% dei ricordi ───────────────────
-        END_BONUS  = 1.5
+        END_BONUS = 1.5
         end_cutoff = int(n * 0.8)
 
         weights = []
         for i, m in enumerate(all_mems):
-            w  = recency_weights[i]
+            w = recency_weights[i]
             w *= 1.0 + feeling_salience.get(m.feeling, 0.5)
             if i >= end_cutoff:
                 w *= END_BONUS
@@ -891,25 +890,25 @@ class Brain:
         weights = [w * random.uniform(0.85, 1.15) for w in weights]
 
         # ── Sample pesato senza reinserimento ────────────────────
-        total_w       = sum(weights)
-        probs         = [w / total_w for w in weights]
-        k             = min(max_memories, n)
-        indices       = list(range(n))
+        total_w = sum(weights)
+        probs = [w / total_w for w in weights]
+        k = min(max_memories, n)
+        indices = list(range(n))
         current_probs = list(probs)
-        sampled_idx   = []
+        sampled_idx = []
 
         for _ in range(k):
             if not indices:
                 break
-            total      = sum(current_probs)
+            total = sum(current_probs)
             normalized = [p / total for p in current_probs]
-            pos        = random.choices(range(len(indices)), weights=normalized, k=1)[0]
+            pos = random.choices(range(len(indices)), weights=normalized, k=1)[0]
             sampled_idx.append(indices[pos])
             indices.pop(pos)
             current_probs.pop(pos)
 
         memories = [all_mems[i] for i in sampled_idx]
-        seen     = {m.memory_id for m in memories}
+        seen = {m.memory_id for m in memories}
 
         # ── Context boost: aggiunge ricordi contestuali post-sample
         # Non è un gate — non bypassa il campionamento
@@ -922,39 +921,39 @@ class Brain:
                         seen.add(m.memory_id)
             if boost:
                 # Sostituisce i ricordi in coda (peso più basso) con quelli contestuali
-                memories = memories[:max_memories - len(boost)] + boost
+                memories = memories[: max_memories - len(boost)] + boost
 
                 # ── Diversity cap — nessun cluster temporale può dominare ──
         # Divide i ricordi in 3 fasce temporali e cappucci quante
         # slot può occupare ciascuna fascia
-        tier_size  = n // 3
-        tier_cap   = max(2, max_memories // 3)   # max slot per fascia
+        tier_size = n // 3
+        tier_cap = max(2, max_memories // 3)  # max slot per fascia
         tier_count = [0, 0, 0]
 
         def _tier(idx: int) -> int:
-            if idx < tier_size:     return 0   # vecchi
-            if idx < tier_size * 2: return 1   # medi
-            return 2                            # recenti
+            if idx < tier_size:
+                return 0  # vecchi
+            if idx < tier_size * 2:
+                return 1  # medi
+            return 2  # recenti
 
         indices_filtered = []
-        probs_filtered   = []
-        for idx, p in sorted(
-            enumerate(probs), key=lambda x: x[1], reverse=True
-        ):
+        probs_filtered = []
+        for idx, p in sorted(enumerate(probs), key=lambda x: x[1], reverse=True):
             t = _tier(idx)
             if tier_count[t] < tier_cap:
                 indices_filtered.append(idx)
                 probs_filtered.append(p)
-            if len(indices_filtered) >= k * 3:   # pool 3x per dare varietà al sample
+            if len(indices_filtered) >= k * 3:  # pool 3x per dare varietà al sample
                 break
 
         # Renormalizza e campiona sul pool filtrato
-        total_fp     = sum(probs_filtered)
-        probs_norm   = [p / total_fp for p in probs_filtered]
-        sampled_idx  = random.choices(
+        total_fp = sum(probs_filtered)
+        probs_norm = [p / total_fp for p in probs_filtered]
+        sampled_idx = random.choices(
             indices_filtered,
-            weights = probs_norm,
-            k       = min(k, len(indices_filtered)),
+            weights=probs_norm,
+            k=min(k, len(indices_filtered)),
         )
         # Deduplica mantenendo ordine
         seen_idx = set()
@@ -985,13 +984,13 @@ class Brain:
 
         # Etichette neutre — impedisce associazioni semantiche dirette
         # es: "orizzonte/speranza" → "partire" per collisione lessicale
-        labels         = [chr(65 + i) for i in range(len(options))]
-        labeled        = "\n".join(f"{l}: [opzione {l}]" for l in labels)
+        labels = [chr(65 + i) for i in range(len(options))]
+        labeled = "\n".join(f"{l}: [opzione {l}]" for l in labels)
         schema_options = " | ".join(f"{l}={o}" for l, o in zip(labels, options))
-        context_str    = f"Contesto: {context}\n\n" if context else ""
+        context_str = f"Contesto: {context}\n\n" if context else ""
 
         feelings_in_memories = list({m.feeling for m in memories})
-        emotional_tension    = len(feelings_in_memories)
+        emotional_tension = len(feelings_in_memories)
         certainty_hint = (
             "alta conflittualità emotiva — la certezza sarà bassa"
             if emotional_tension >= 4
@@ -1022,7 +1021,7 @@ class Brain:
             f"}}"
         )
 
-        raw  = self._llm.complete(self._system, prompt)
+        raw = self._llm.complete(self._system, prompt)
         data = _parse_json(raw)
 
         # ── chosen ───────────────────────────────────────────────
@@ -1054,15 +1053,17 @@ class Brain:
 
         # ── certainty — estrae solo la prima parola ───────────────
         raw_certainty = str(data.get("certainty", "incerto")).strip()
-        certainty     = raw_certainty.split()[0].rstrip(".,;:") if raw_certainty else "incerto"
+        certainty = (
+            raw_certainty.split()[0].rstrip(".,;:") if raw_certainty else "incerto"
+        )
 
         # ── rejected — rimappa etichette neutre → opzioni reali ──
         label_to_option = {l: o for l, o in zip(labels, options)}
-        rejected_raw    = data.get("rejected", {})
+        rejected_raw = data.get("rejected", {})
         if isinstance(rejected_raw, dict):
             rejected = []
             for k, v in rejected_raw.items():
-                k_clean  = k.strip().upper().rstrip(":").strip()
+                k_clean = k.strip().upper().rstrip(":").strip()
                 real_key = label_to_option.get(k_clean, k)
                 rejected.append(f"{real_key}: {v}")
         else:
@@ -1073,18 +1074,18 @@ class Brain:
         if not emotional_driver and feelings_in_memories:
             # Fallback: l'emozione più saliente tra quelle nei ricordi
             emotional_driver = max(
-                feelings_in_memories,
-                key=lambda f: feeling_salience.get(f, 0.5)
+                feelings_in_memories, key=lambda f: feeling_salience.get(f, 0.5)
             )
         return ChoiceResult(
-            chosen           = chosen,
-            rejected         = rejected,
-            reasoning        = reasoning,
-            emotional_driver = emotional_driver,
-            memories_invoked = memories,
-            certainty        = certainty,
-            provider_used    = self._llm.active_profile.name,
+            chosen=chosen,
+            rejected=rejected,
+            reasoning=reasoning,
+            emotional_driver=emotional_driver,
+            memories_invoked=memories,
+            certainty=certainty,
+            provider_used=self._llm.active_profile.name,
         )
+
     # def choose(
     #     self,
     #     options: list[str],
@@ -1273,6 +1274,8 @@ class Brain:
     #         certainty        = certainty,
     #         provider_used    = self._llm.active_profile.name,
     #     )
+
+
 # ─────────────────────────────────────────────
 # HELPERS
 # ─────────────────────────────────────────────
@@ -1299,67 +1302,6 @@ def _memories_to_context(memories: list[Memory]) -> str:
             f"    Note: {m.note or '—'}  |  Tag: {', '.join(m.tags) or '—'}"
         )
     return "\n\n".join(lines)
-
-
-def _parse_json_old_old(text: str) -> dict:
-    text = text.strip()
-    if text.startswith("```"):
-        text = "\n".join(
-            l for l in text.split("\n") if not l.strip().startswith("```")
-        ).strip()
-    try:
-        return json.loads(text)
-    except json.JSONDecodeError:
-        m = re.search(r"\{.*\}", text, re.DOTALL)
-        if m:
-            try:
-                return json.loads(m.group())
-            except json.JSONDecodeError:
-                pass
-    return {}
-
-
-def _parse_json_old(text: str) -> dict:
-    if not text:
-        return {}
-
-    text = text.strip()
-
-    # 1. Rimuove markdown fences
-    text = re.sub(r"```[a-zA-Z]*", "", text)
-    text = text.replace("```", "").strip()
-
-    # 2. Se è stato passato un oggetto "wrapper" (tipo response intera), isola content/reasoning
-    # (prende solo la parte utile se presente)
-    if '"content":' in text or '"reasoning_content":' in text:
-        # prova a estrarre solo la parte dopo content/reasoning
-        m = re.search(r'"content"\s*:\s*"([^"]*)"', text, re.DOTALL)
-        if m and m.group(1).strip():
-            text = m.group(1)
-
-        m = re.search(r'"reasoning_content"\s*:\s*"([^"]*)"', text, re.DOTALL)
-        if (not text or text.strip() == "") and m:
-            text = m.group(1)
-
-    # 3. Estrae tutti i possibili JSON object (NON greedy)
-    candidates = re.findall(r"\{.*?\}", text, re.DOTALL)
-    candidates = sorted(candidates, key=len, reverse=True)
-
-    for c in candidates:
-        try:
-            return json.loads(c)
-        except json.JSONDecodeError:
-            continue
-
-    # 4. Tentativo extra: fix base comuni
-    for c in candidates:
-        try:
-            fixed = re.sub(r",\s*([\]}])", r"\1", c)  # trailing commas
-            return json.loads(fixed)
-        except json.JSONDecodeError:
-            continue
-
-    return {}
 
 
 def _parse_json(text: str) -> dict:
