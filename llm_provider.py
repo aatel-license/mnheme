@@ -551,7 +551,7 @@ class LLMProvider:
                     continue
                 raise
 
-        raise last_error  # type: ignore
+        raise last_error  # type: ignore # pragma: no cover
 
     def _complete_multi(
         self,

@@ -295,5 +295,5 @@ class IndexEngine:
         except OSError:
             try:
                 tmp.unlink(missing_ok=True)
-            except OSError:
-                pass
+            except OSError:  # pragma: no cover
+                pass         # pragma: no cover

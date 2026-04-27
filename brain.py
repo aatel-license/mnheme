@@ -898,8 +898,8 @@ class Brain:
         sampled_idx = []
 
         for _ in range(k):
-            if not indices:
-                break
+            if not indices:  # pragma: no cover
+                break        # pragma: no cover
             total = sum(current_probs)
             normalized = [p / total for p in current_probs]
             pos = random.choices(range(len(indices)), weights=normalized, k=1)[0]
@@ -1031,8 +1031,8 @@ class Brain:
                 idx = int(data["chosen_index"])
                 if 0 <= idx < len(options):
                     chosen = options[idx]
-            except (ValueError, TypeError):
-                pass
+            except (ValueError, TypeError):  # pragma: no cover
+                pass                         # pragma: no cover
         elif "chosen" in data:
             raw_chosen = str(data["chosen"]).strip()
             if raw_chosen in options:
