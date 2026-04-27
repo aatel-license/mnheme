@@ -1,0 +1,60 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mnheme"
+version = "0.1.0"
+description = "A local-first, infinite memory database and personality engine for AI agents."
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+    { name = "Mnheme Contributors" }
+]
+# Core library has zero external dependencies
+dependencies = []
+
+[project.optional-dependencies]
+api = [
+    "fastapi",
+    "uvicorn",
+    "pydantic",
+]
+mcp = [
+    "mcp",
+    "starlette",
+    "uvicorn",
+]
+dev = [
+    "pytest",
+    "pytest-cov",
+]
+all = [
+    "fastapi",
+    "uvicorn",
+    "pydantic",
+    "mcp",
+    "starlette",
+    "pytest",
+    "pytest-cov"
+]
+
+[tool.setuptools]
+# Since the repository structure is flat, we declare modules explicitly.
+# This makes `import mnheme`, `import brain`, etc. work natively.
+py-modules = [
+    "mnheme",
+    "brain",
+    "filestore",
+    "fsprobe",
+    "storage",
+    "index",
+    "llm_provider",
+    "mnheme_api",
+    "mnheme_mcp"
+]
+
+[project.scripts]
+mnheme-api = "mnheme_api:main"
+mnheme-mcp = "mnheme_mcp:main"

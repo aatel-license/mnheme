@@ -602,7 +602,7 @@ async def _run_sse(port: int) -> None:
         sys.exit(1)
 
 
-if __name__ == "__main__":
+def main():
     import asyncio
 
     parser = argparse.ArgumentParser(description="MNHĒMĒ MCP Server")
@@ -611,6 +611,7 @@ if __name__ == "__main__":
     parser.add_argument("--db",   type=str, help="Override MNHEME_DB_PATH")
     args = parser.parse_args()
 
+    global db
     if args.db:
         db = MemoryDB(args.db, files_dir=FILES_DIR)
 
@@ -623,3 +624,6 @@ if __name__ == "__main__":
         asyncio.run(_run_sse(args.port))
     else:
         asyncio.run(_run_stdio())
+
+if __name__ == "__main__":
+    main()
