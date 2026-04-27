@@ -27,7 +27,7 @@ import threading
 import traceback
 
 # Aggiungi la directory del progetto al path
-PROJECT_DIR = pathlib.Path(__file__).parent
+PROJECT_DIR = pathlib.Path(__file__).parent.parent  # root del progetto
 sys.path.insert(0, str(PROJECT_DIR))
 
 # ─────────────────────────────────────────────
