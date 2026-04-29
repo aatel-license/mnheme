@@ -113,6 +113,42 @@ def by_tag(tag: str, limit: Optional[int] = Query(None)):
     return [_out(m) for m in db.recall_by_tag(tag, limit=limit)]
 
 
+@app.get("/memories/graph/spreading", response_model=List[MemoryOut],
+         summary="Dijkstra Spreading Activation — vicinato semantico a partire da un concetto")
+def graph_spreading(
+    concept      : str            = Query(..., description="Concetto di partenza"),
+    max_distance : float          = Query(10.0, description="Distanza semantica massima (default: 10.0)"),
+    limit        : Optional[int]  = Query(10,   description="Numero massimo di risultati"),
+):
+    """
+    Esplora il vicinato semantico a partire da un concetto usando Dijkstra.
+    Ritorna i ricordi raggiungibili entro max_distance, ordinati per vicinanza.
+
+    Pesi degli archi:
+    - Stesso concetto: 1.0
+    - Stesso tag:      2.0
+    - Stesso sentimento: 5.0
+    """
+    results = db.dijkstra_search(concept, max_distance=max_distance, limit=limit)
+    return [_out(m) for m in results]
+
+
+@app.get("/memories/graph/path", response_model=List[MemoryOut],
+         summary="Dijkstra Multi-hop — cammino associativo minimo tra due concetti")
+def graph_path(
+    start  : str = Query(..., description="Concetto di partenza"),
+    target : str = Query(..., description="Concetto bersaglio"),
+):
+    """
+    Trova il percorso associativo più breve (cammino minimo) tra due concetti
+    usando Dijkstra. Ritorna la catena di ricordi che collega start a target.
+
+    Restituisce lista vuota se non esiste percorso.
+    """
+    path = db.dijkstra_search(start, target_concept=target)
+    return [_out(m) for m in path]
+
+
 @app.get("/concepts", summary="Tutti i concetti con statistiche")
 def get_concepts():
     return db.list_concepts()

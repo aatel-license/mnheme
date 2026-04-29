@@ -2175,6 +2175,135 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
   }
 })();
 
+/* ═══════════════════════════════════════════════════════════
+   VIEW: DIJKSTRA GRAPH SEARCH
+   ═══════════════════════════════════════════════════════════ */
+
+(function dijkstraSection() {
+  const modeSpreadBtn = document.getElementById('dij-mode-spread');
+  const modePathBtn   = document.getElementById('dij-mode-path');
+  const panelSpread   = document.getElementById('dij-panel-spread');
+  const panelPath     = document.getElementById('dij-panel-path');
+  const resultEl      = document.getElementById('dijkstra-result');
+
+  if (!modeSpreadBtn) return;
+
+  function setMode(mode) {
+    const isSpread = mode === 'spread';
+    panelSpread.style.display = isSpread ? '' : 'none';
+    panelPath.style.display   = isSpread ? 'none' : '';
+    modeSpreadBtn.className   = isSpread ? 'btn-primary' : 'btn-ghost';
+    modePathBtn.className     = isSpread ? 'btn-ghost'   : 'btn-primary';
+    resultEl.innerHTML = '';
+  }
+
+  modeSpreadBtn.addEventListener('click', () => setMode('spread'));
+  modePathBtn.addEventListener('click',   () => setMode('path'));
+
+  /* ── Spreading Activation ───────────────────────────── */
+  document.getElementById('btn-dij-spread').addEventListener('click', async () => {
+    const concept = document.getElementById('dij-spread-concept').value.trim();
+    const dist    = parseFloat(document.getElementById('dij-spread-dist').value)  || 10;
+    const limit   = parseInt(document.getElementById('dij-spread-limit').value)   || 10;
+
+    if (!concept) { toast('Enter a start concept.', 'info'); return; }
+
+    loading(resultEl);
+    try {
+      const data = await GET(
+        `/memories/graph/spreading?concept=${encodeURIComponent(concept)}&max_distance=${dist}&limit=${limit}`
+      );
+
+      if (!data.length) {
+        resultEl.innerHTML = `<div class="empty-state">
+          <div class="empty-state-icon">⟁</div>
+          No memories reachable from <strong>${esc(concept)}</strong> within distance ${dist}.
+        </div>`;
+        return;
+      }
+
+      resultEl.innerHTML = `
+        <div style="margin-bottom:12px;font-size:10px;color:var(--muted);letter-spacing:.1em">
+          ⟁ SPREADING ACTIVATION from
+          <span style="color:var(--accent)">${esc(concept)}</span>
+          — ${data.length} memories within distance ${dist}
+        </div>
+        ${data.map((m, i) => memoryCardHtml(m, i)).join('')}`;
+    } catch (e) {
+      showError(resultEl, e.detail || 'Spreading activation failed');
+    }
+  });
+
+  /* ── Multi-hop Path ─────────────────────────────────── */
+  document.getElementById('btn-dij-path').addEventListener('click', async () => {
+    const start  = document.getElementById('dij-path-start').value.trim();
+    const target = document.getElementById('dij-path-target').value.trim();
+
+    if (!start || !target) { toast('Enter both start and target concepts.', 'info'); return; }
+    if (start === target)  { toast('Start and target must be different.', 'info'); return; }
+
+    loading(resultEl);
+    try {
+      const data = await GET(
+        `/memories/graph/path?start=${encodeURIComponent(start)}&target=${encodeURIComponent(target)}`
+      );
+
+      if (!data.length) {
+        resultEl.innerHTML = `<div class="empty-state">
+          <div class="empty-state-icon">⇢</div>
+          No associative path found between
+          <strong>${esc(start)}</strong> and <strong>${esc(target)}</strong>.
+        </div>`;
+        return;
+      }
+
+      const pathHtml = data.map((m, i) => {
+        const arrow = i < data.length - 1
+          ? `<div style="text-align:center;font-size:1.4rem;color:var(--accent);margin:2px 0;opacity:.7">⬇</div>`
+          : '';
+        const hopBadge = `<span style="
+          display:inline-block;background:var(--accent);color:var(--bg);
+          border-radius:4px;padding:1px 7px;font-size:9px;font-weight:700;
+          margin-right:6px;vertical-align:middle">HOP ${i + 1}</span>`;
+        const card = memoryCardHtml(m, i).replace(
+          `<div class="memory-card`,
+          `<div class="memory-card`
+        );
+        // Inject hop badge into card header
+        return card.replace(
+          `<span class="memory-concept">`,
+          `${hopBadge}<span class="memory-concept">`
+        ) + arrow;
+      }).join('');
+
+      resultEl.innerHTML = `
+        <div style="margin-bottom:12px;font-size:10px;color:var(--muted);letter-spacing:.1em">
+          ⇢ PATH
+          <span style="color:var(--accent)">${esc(start)}</span>
+          →
+          <span style="color:var(--accent)">${esc(target)}</span>
+          — ${data.length} hop${data.length !== 1 ? 's' : ''}
+        </div>
+        ${pathHtml}`;
+    } catch (e) {
+      showError(resultEl, e.detail || 'Path search failed');
+    }
+  });
+
+  // Keyboard shortcuts: Enter inside inputs triggers search
+  ['dij-spread-concept'].forEach(id => {
+    document.getElementById(id)?.addEventListener('keydown', e => {
+      if (e.key === 'Enter') document.getElementById('btn-dij-spread').click();
+    });
+  });
+  ['dij-path-start', 'dij-path-target'].forEach(id => {
+    document.getElementById(id)?.addEventListener('keydown', e => {
+      if (e.key === 'Enter') document.getElementById('btn-dij-path').click();
+    });
+  });
+})();
+
+
 document.addEventListener('DOMContentLoaded', () => {
   // Language buttons
   document.querySelectorAll('.lang-btn').forEach(btn => {

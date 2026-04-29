@@ -760,6 +760,8 @@ def conversation_loop(
     print(f"  {C.B}!ricordi{C.R}       ultimi ricordi accumulati")
     print(f"  {C.B}!stats{C.R}         statistiche database")
     print(f"  {C.B}!cfg{C.R}           mostra configurazione attiva")
+    print(f"  {C.B}!spreading <concetto>{C.R}   vicinato semantico (Dijkstra)")
+    print(f"  {C.B}!path <da> → <a>{C.R}        cammino tra due concetti (Dijkstra)")
     print(f"  {C.B}!exit{C.R}          esci")
     print(f"{C.B}{C.WH}{'═'*52}{C.R}\n")
 
@@ -817,6 +819,58 @@ def conversation_loop(
                 if not k.startswith("_"):
                     print(f"    {k:<28} = {v}")
             print()
+            continue
+
+        elif raw.startswith("!spreading "):
+            concept = raw[len("!spreading "):].strip()
+            if not concept:
+                print("  Uso: !spreading <concetto>\n")
+                continue
+            try:
+                db = get_db()
+                mems = db.dijkstra_search(concept, max_distance=10.0, limit=15)
+                if not mems:
+                    print(f"  Nessun ricordo raggiungibile da '{concept}'.\n")
+                else:
+                    print(f"\n  {C.B}Vicinato semantico di '{concept}' (Dijkstra Spreading):{C.R}")
+                    for m in mems:
+                        ts = m.timestamp[:16].replace("T", " ")
+                        print(
+                            f"  {C.DI}[{ts}]{C.R} [{C.MA}{m.feeling}{C.R}] "
+                            f"{C.B}{m.concept}{C.R}: {m.content[:65]}{'…' if len(m.content)>65 else ''}"
+                        )
+                    print()
+            except Exception as e:
+                print(f"  Errore: {e}\n")
+            continue
+
+        elif raw.startswith("!path "):
+            rest = raw[len("!path "):].strip()
+            # Supporta sia "!path A → B" che "!path A -> B"
+            sep = " → " if " → " in rest else (" -> " if " -> " in rest else None)
+            if sep is None or rest.count(sep) != 1:
+                print("  Uso: !path <concetto_start> → <concetto_target>\n")
+                continue
+            start, target = [p.strip() for p in rest.split(sep, 1)]
+            if not start or not target:
+                print("  Uso: !path <concetto_start> → <concetto_target>\n")
+                continue
+            try:
+                db = get_db()
+                path = db.dijkstra_search(start, target_concept=target)
+                if not path:
+                    print(f"  Nessun percorso tra '{start}' e '{target}'.\n")
+                else:
+                    print(f"\n  {C.B}Cammino '{start}' → '{target}' ({len(path)} hop):{C.R}")
+                    for i, m in enumerate(path):
+                        arrow = "  " if i == 0 else "  ↓ "
+                        print(
+                            f"{arrow}{C.DI}[hop {i+1}]{C.R} [{C.MA}{m.feeling}{C.R}] "
+                            f"{C.B}{m.concept}{C.R}: {m.content[:65]}{'…' if len(m.content)>65 else ''}"
+                        )
+                    print()
+            except Exception as e:
+                print(f"  Errore: {e}\n")
             continue
 
         # ── Input voce ────────────────────────────────────────────────────────

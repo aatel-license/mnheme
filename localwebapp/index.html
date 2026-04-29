@@ -87,6 +87,9 @@
     <button class="nav-btn" data-view="graph">
       <span class="nav-icon">⬡</span> <span data-i18n="navGraph">Graph</span>
     </button>
+    <button class="nav-btn" data-view="dijkstra">
+      <span class="nav-icon">⟁</span> <span data-i18n="navDijkstra">Dijkstra Search</span>
+    </button>
 
     <div class="nav-group-label" data-i18n="navSystem">System</div>
     <button class="nav-btn" data-view="stats">
@@ -661,6 +664,68 @@
       </div>
     </div>
     <div class="brain-response" id="summarize-result"></div>
+  </section>
+
+  <!-- ── DIJKSTRA SEARCH ── -->
+  <section class="view" id="view-dijkstra">
+    <div class="view-header">
+      <h1 data-i18n="titleDijkstra">Dijkstra Graph Search</h1>
+      <p class="view-desc" data-i18n="descDijkstra">Graph-based memory search using Dijkstra's algorithm. Weights: same concept&nbsp;1.0, shared tag&nbsp;2.0, shared feeling&nbsp;5.0.</p>
+    </div>
+
+    <!-- Mode selector -->
+    <div class="filter-bar" style="margin-bottom:0">
+      <button class="btn-primary" id="dij-mode-spread" style="min-width:170px">⟁ Spreading Activation</button>
+      <button class="btn-ghost"  id="dij-mode-path"   style="min-width:170px">⇢ Multi-hop Path</button>
+    </div>
+
+    <!-- Spreading panel -->
+    <div class="form-card" id="dij-panel-spread">
+      <p class="view-desc" style="margin:0 0 12px">Explore the semantic neighbourhood of a concept — returns memories reachable within the given semantic distance.</p>
+      <div class="form-row">
+        <div class="field" style="flex:2">
+          <label>Start Concept <span class="required">*</span></label>
+          <input type="text" id="dij-spread-concept" placeholder="e.g. Debt, Family, Work…" autocomplete="off">
+        </div>
+        <div class="field">
+          <label>Max Distance</label>
+          <input type="number" id="dij-spread-dist" value="10" min="1" max="50" step="0.5">
+        </div>
+        <div class="field">
+          <label>Limit</label>
+          <input type="number" id="dij-spread-limit" value="10" min="1" max="100">
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn-primary" id="btn-dij-spread">
+          <span class="btn-icon">⟁</span> Activate Spreading
+        </button>
+      </div>
+    </div>
+
+    <!-- Multi-hop panel (hidden by default) -->
+    <div class="form-card" id="dij-panel-path" style="display:none">
+      <p class="view-desc" style="margin:0 0 12px">Find the shortest associative chain between two concepts — the logical thread that connects them through shared memories.</p>
+      <div class="form-row">
+        <div class="field" style="flex:1">
+          <label>Start Concept <span class="required">*</span></label>
+          <input type="text" id="dij-path-start" placeholder="e.g. Debt" autocomplete="off">
+        </div>
+        <div style="display:flex;align-items:flex-end;padding-bottom:4px;font-size:1.4rem;color:var(--accent)">⇢</div>
+        <div class="field" style="flex:1">
+          <label>Target Concept <span class="required">*</span></label>
+          <input type="text" id="dij-path-target" placeholder="e.g. Vacation" autocomplete="off">
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn-primary" id="btn-dij-path">
+          <span class="btn-icon">⇢</span> Find Path
+        </button>
+      </div>
+    </div>
+
+    <!-- Results -->
+    <div id="dijkstra-result" style="margin-top:16px"></div>
   </section>
 
 </main>

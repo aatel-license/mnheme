@@ -203,6 +203,46 @@ TOOLS = [
         },
     ),
 
+    # ── DIJKSTRA GRAPH SEARCH ──────────────────────────────────────────────────
+    Tool(
+        name="dijkstra_spreading",
+        description=(
+            "Spreading Activation: esplora il vicinato semantico a partire da un concetto "
+            "usando l'algoritmo di Dijkstra. "
+            "Trova ricordi collegati per concetto condiviso (peso 1.0), "
+            "tag comuni (peso 2.0) o sentimento identico (peso 5.0). "
+            "Ritorna i ricordi più associativamente vicini, ordinati per distanza semantica crescente."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "concept":      {"type": "string",  "description": "Concetto di partenza"},
+                "max_distance": {"type": "number",  "description": "Distanza semantica massima (default: 10.0)"},
+                "limit":        {"type": "integer", "description": "Numero massimo di risultati (default: 10)"},
+            },
+            "required": ["concept"],
+        },
+    ),
+
+    Tool(
+        name="dijkstra_path",
+        description=(
+            "Multi-hop Reasoning: trova il cammino associativo più breve tra due concetti "
+            "usando l'algoritmo di Dijkstra. "
+            "Restituisce la catena di ricordi (il 'filo logico') che collega start a target "
+            "attraverso tag, sentimenti o concetti intermedi condivisi. "
+            "Utile per scoprire come due idee apparentemente distanti sono collegate nella memoria."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "start":  {"type": "string", "description": "Concetto di partenza"},
+                "target": {"type": "string", "description": "Concetto bersaglio"},
+            },
+            "required": ["start", "target"],
+        },
+    ),
+
     # ── STATS ─────────────────────────────────────────────────────────────────
     Tool(
         name="list_concepts",
@@ -461,6 +501,34 @@ async def handle_call_tool(name: str, arguments: dict) -> list[TextContent]:
         # ── storage_info ──────────────────────────────────────────────────────
         elif name == "storage_info":
             return _ok(db.storage_info())
+
+        # ── dijkstra_spreading ────────────────────────────────────────────────
+        elif name == "dijkstra_spreading":
+            memories = db.dijkstra_search(
+                args["concept"],
+                max_distance = float(args.get("max_distance", 10.0)),
+                limit        = args.get("limit", 10),
+            )
+            return _ok({
+                "concept":    args["concept"],
+                "algorithm":  "dijkstra-spreading",
+                "count":      len(memories),
+                "memories":   [_memory_dict(m) for m in memories],
+            })
+
+        # ── dijkstra_path ─────────────────────────────────────────────────────
+        elif name == "dijkstra_path":
+            path = db.dijkstra_search(
+                args["start"],
+                target_concept = args["target"],
+            )
+            return _ok({
+                "start":     args["start"],
+                "target":    args["target"],
+                "algorithm": "dijkstra-path",
+                "hops":      len(path),
+                "path":      [_memory_dict(m) for m in path],
+            })
 
         # ── Brain tools ───────────────────────────────────────────────────────
         elif name in (
