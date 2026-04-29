@@ -686,6 +686,146 @@ class MemoryDB:
                     break
         return list(reversed(results))
 
+    def dijkstra_search(
+        self,
+        start_concept: str,
+        target_concept: Optional[str] = None,
+        *,
+        max_distance: float = 10.0,
+        limit: Optional[int] = 10,
+    ) -> list[Memory]:
+        """
+        Applica l'algoritmo di Dijkstra per ricercare ricordi modellandoli come un grafo.
+        
+        Permette due casi d'uso:
+        1. Spreading Activation: Esplora il vicinato semantico a partire da un concetto.
+        2. Multi-hop Reasoning: Trova il percorso associativo più breve tra due concetti.
+
+        Pesi degli archi (euristici):
+        - Stesso concetto: peso 1.0 (forte associazione logica)
+        - Stesso tag: peso 2.0 (associazione tematica)
+        - Stesso sentimento: peso 5.0 (associazione emotiva, più debole)
+
+        Parametri
+        ---------
+        start_concept  : Il concetto di partenza (entry-point)
+        target_concept : Se specificato, trova il percorso più breve verso questo concetto.
+        max_distance   : Distanza "semantica" massima esplorabile dal nodo di partenza.
+        limit          : Numero massimo di risultati da restituire (ignorato se c'è un target_concept).
+
+        Ritorna
+        -------
+        list[Memory]: 
+            - Se target_concept è None: Lista di ricordi vicini, ordinati per distanza crescente.
+            - Se target_concept è valorizzato: La catena di ricordi (cammino) che collega i due concetti.
+        """
+        import heapq
+
+        # Recupera gli offset di partenza dal concetto iniziale
+        start_offsets = self._index.offsets_by_concept(start_concept.strip())
+        if not start_offsets:
+            return []
+
+        target_offsets = set(self._index.offsets_by_concept(target_concept.strip())) if target_concept else set()
+
+        distances: dict[int, float] = {}
+        previous: dict[int, int] = {}
+        pq: list[tuple[float, int]] = []
+
+        # Inizializza i nodi di partenza con distanza 0
+        for off in start_offsets:
+            distances[off] = 0.0
+            heapq.heappush(pq, (0.0, off))
+
+        visited: set[int] = set()
+        found_target: Optional[int] = None
+
+        while pq:
+            dist, current = heapq.heappop(pq)
+
+            if current in visited:
+                continue
+            visited.add(current)
+
+            # Se cerchiamo un bersaglio e l'abbiamo trovato
+            if target_concept and current in target_offsets:
+                found_target = current
+                break
+
+            # Limita la profondità di esplorazione se non stiamo cercando un bersaglio specifico
+            if not target_concept and dist >= max_distance:
+                continue
+
+            # Leggi il record corrente per espandere i vicini
+            # Usiamo _storage.read_many per gestire la lettura ottimizzata
+            records = self._storage.read_many([current])
+            if not records or records[0] is None:
+                continue
+            record = records[0]
+
+            neighbors: list[tuple[int, float]] = []
+
+            # Archi di tipo 1: Stesso concetto (Peso: 1.0)
+            c = record.get("concept")
+            if c:
+                for n_off in self._index.offsets_by_concept(c):
+                    if n_off != current:
+                        neighbors.append((n_off, 1.0))
+
+            # Archi di tipo 2: Stesso tag (Peso: 2.0)
+            for t in record.get("tags", []):
+                for n_off in self._index.offsets_by_tag(t):
+                    if n_off != current:
+                        neighbors.append((n_off, 2.0))
+
+            # Archi di tipo 3: Stesso sentimento (Peso: 5.0)
+            f = record.get("feeling")
+            if f:
+                # Limite euristico: esploriamo solo i 20 ricordi più recenti con stesso sentimento
+                # per evitare che il grafo esploda in rami troppo densi e inutili
+                f_offsets = self._index.offsets_by_feeling(f)[:20]
+                for n_off in f_offsets:
+                    if n_off != current:
+                        neighbors.append((n_off, 5.0))
+
+            # Rilassamento degli archi
+            for n_off, weight in neighbors:
+                if n_off in visited:
+                    continue
+                new_dist = dist + weight
+                # Considera solo i percorsi entro la distanza massima (o illimitata se cerchiamo un target)
+                if new_dist <= max_distance or target_concept:
+                    if new_dist < distances.get(n_off, float('inf')):
+                        distances[n_off] = new_dist
+                        previous[n_off] = current
+                        heapq.heappush(pq, (new_dist, n_off))
+
+        # Ricostruzione del risultato
+        result_offsets: list[int] = []
+
+        if target_concept:
+            if found_target is None:
+                return []
+            
+            # Ricostruisci il cammino minimo a ritroso
+            curr = found_target
+            path = []
+            while curr in previous:
+                path.append(curr)
+                curr = previous[curr]
+            path.append(curr) # Aggiunge il nodo iniziale
+            result_offsets = list(reversed(path))
+            return self._load_offsets(result_offsets, None)
+        else:
+            # Ordina per vicinanza semantica
+            sorted_by_dist = sorted(distances.items(), key=lambda x: x[1])
+            # Raccogli offset (ignorando i nodi di partenza a distanza 0, tranne se è l'unico)
+            for off, d in sorted_by_dist:
+                if d >= 0: # Volendo possiamo escludere i nodi di partenza (d == 0)
+                    result_offsets.append(off)
+            
+            return self._load_offsets(result_offsets, limit)
+
     # ── STATS ────────────────────────────────
 
     def list_concepts(self) -> list[dict]:

@@ -72,6 +72,21 @@ print(f"\n[6] recall_by_tag('infanzia')")
 for m in db.recall_by_tag("infanzia"):
     print(f"  {m.content}")
 
+# ── 6b. DIJKSTRA SEARCH ───────────────────────────
+print(f"\n[6b] dijkstra_search('Debito') - Spreading Activation")
+vicinato = db.dijkstra_search("Debito", max_distance=8.0)
+for m in vicinato:
+    print(f"  [{m.concept}] (feeling: {m.feeling}) {m.content[:45]}")
+
+print(f"\n[6c] dijkstra_search('Debito', target_concept='Viaggio') - Multi-hop")
+path = db.dijkstra_search("Debito", target_concept="Viaggio")
+if path:
+    print("  Percorso logico trovato:")
+    for i, m in enumerate(path):
+        print(f"    {i+1}. [{m.concept}] {m.content[:45]}")
+else:
+    print("  Nessun percorso trovato.")
+
 # ── 7. STATISTICHE ──────────────────────────────
 print(f"\n[7] Statistiche")
 print(f"  Totale ricordi:       {db.count()}")

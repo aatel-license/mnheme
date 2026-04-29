@@ -502,3 +502,49 @@ def test_search_index_path_in_concept_only(db):
     results = db.search("debito", in_content=False, in_concept=True, in_note=False)
     assert len(results) >= 1
 
+# ── dijkstra_search ──────────────────────────────────────────────────────────
+
+def test_dijkstra_search_spreading_activation(db):
+    # Setup graph: 
+    # A(A_concept, tag_1) -> B(B_concept, tag_1, feeling_1) -> C(C_concept, tag_2, feeling_1)
+    db.remember("A_concept", Feeling.GIOIA, "A", tags=["tag_1"])
+    db.remember("B_concept", Feeling.AMORE, "B", tags=["tag_1"])
+    db.remember("C_concept", Feeling.AMORE, "C", tags=["tag_2"])
+    
+    # Starting from A_concept, it should find A, then B (via tag_1, weight 2.0)
+    # Then from B it should find C (via AMORE, weight 5.0)
+    # Total distance A -> B -> C = 7.0
+    
+    results = db.dijkstra_search("A_concept", max_distance=8.0)
+    
+    concepts = [r.concept for r in results]
+    assert "A_concept" in concepts
+    assert "B_concept" in concepts
+    assert "C_concept" in concepts
+
+def test_dijkstra_search_multi_hop(db):
+    db.remember("A_concept", Feeling.GIOIA, "A", tags=["tag_1"])
+    db.remember("B_concept", Feeling.AMORE, "B", tags=["tag_1", "tag_2"])
+    db.remember("C_concept", Feeling.ANSIA, "C", tags=["tag_2"])
+    
+    # Path A -> B -> C
+    path = db.dijkstra_search("A_concept", target_concept="C_concept")
+    concepts = [r.concept for r in path]
+    
+    # It should trace the path exactly: [A_concept, B_concept, C_concept]
+    assert len(concepts) == 3
+    assert concepts[0] == "A_concept"
+    assert concepts[1] == "B_concept"
+    assert concepts[2] == "C_concept"
+
+def test_dijkstra_search_no_path(db):
+    db.remember("A_concept", Feeling.GIOIA, "A", tags=["tag_1"])
+    db.remember("Isolated", Feeling.RABBIA, "I", tags=["tag_isolated"])
+    
+    path = db.dijkstra_search("A_concept", target_concept="Isolated")
+    assert path == []
+
+def test_dijkstra_search_invalid_start(db):
+    assert db.dijkstra_search("NonExistent") == []
+
+

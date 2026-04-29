@@ -105,7 +105,32 @@ db.concept_timeline("Debt")    # emotional evolution over time
 db.count(concept="Debt", feeling="anxiety")
 ```
 
+### Associative Graph Search (Dijkstra)
+
+MNHEME treats memories as nodes in a semantic graph. Connections are formed implicitly via shared concepts, tags, and feelings.
+
+```python
+# 1. Spreading Activation: Find memories associated with "Debt" 
+# within a semantic distance of 8.0
+related = db.dijkstra_search("Debt", max_distance=8.0)
+
+# 2. Multi-hop Reasoning: Find the shortest associative path 
+# between two distant concepts
+path = db.dijkstra_search("Debt", target_concept="Vacation")
+# returns a list of Memory objects representing the logical chain
+```
+
+#### Search Methods Comparison
+
+| Method | Type | Strategy | Latency (2k rec) | Best Use Case |
+| :--- | :--- | :--- | :--- | :--- |
+| **`recall()`** | Exact | Concept Key | **~1.5 ms** | Quick retrieval of a specific topic. |
+| **`search()`** | Full-Text | Inverted Index | **~0.1 - 40 ms** | Finding specific words/phrases. |
+| **`dijkstra (Hop)`** | Relational | Shortest Path | **~9.2 ms** | Connecting two distant concepts. |
+| **`dijkstra (Spread)`** | Associative | Radius Expansion | **~109 ms** | Exploring semantic context/neighborhood. |
+
 ---
+
 
 ## The Brain — LLM as cognitive layer
 
@@ -286,6 +311,8 @@ Measured on 2,000 records, Python 3.12, 9p filesystem:
 | `recall_all()` — 2,000 records | 300 ms | 3 ops/s |
 | `search()` full-text | 40 ms | ~49k records/s |
 | `search(limit=5)` | 0.1 ms | 8,348 ops/s |
+| `dijkstra_search()` Spreading | 109 ms | 9 ops/s |
+| `dijkstra_search()` Multi-hop | 9 ms | 108 ops/s |
 | Cold start (2,000 rec) | 40 ms | 49k rec/s indexed |
 
 **File size:** ~374 B/record → ~36 MB per 100k records, ~357 MB per 1M records.

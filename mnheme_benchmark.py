@@ -148,6 +148,7 @@ class MnhemeBenchmark:
         self._write_no_fsync()
         self._read()
         self._search()
+        self._dijkstra()
         self._cold_start()
         self._scalability()
         self._file_info()
@@ -317,6 +318,30 @@ class MnhemeBenchmark:
             rps = n / (r.mean_ms / 1000)
             print(r.row())
             print(f"  {'':48}  --> scansione: {rps:,.0f} record/s")
+
+    # ── 4b. RICERCA DIJKSTRA ─────────────────
+
+    def _dijkstra(self) -> None:
+        header("4b. RICERCA DIJKSTRA (GRAFO)  --  Dijkstra / Spreading Activation")
+
+        db = MemoryDB(self.db_path)
+        concepts = [c["concept"] for c in db.list_concepts()]
+        if not concepts:
+            return
+        
+        start_concept = random.choice(concepts)
+        target_concept = random.choice(concepts)
+        
+        cases = [
+            ("dijkstra_search(start) - Spreading",   lambda: db.dijkstra_search(start_concept, max_distance=10.0), 100, 5),
+            ("dijkstra_search(start, target) - Hop", lambda: db.dijkstra_search(start_concept, target_concept=target_concept), 50, 2),
+        ]
+        
+        for name, fn, n, wu in cases:
+            r = measure(name, fn, n=n, warmup=wu)
+            self.results.append(r)
+            print(r.row())
+
 
     # ── 5. COLD START ─────────────────────────
 
