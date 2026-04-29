@@ -1924,8 +1924,9 @@ document.getElementById('ask-question').addEventListener('keydown', e => {
 });
 
 async function doAsk() {
-  const question = document.getElementById('ask-question').value.trim();
-  const max      = parseInt(document.getElementById('ask-max').value) || 15;
+  const question  = document.getElementById('ask-question').value.trim();
+  const max       = parseInt(document.getElementById('ask-max').value) || 15;
+  const useGraph  = document.getElementById('ask-use-graph')?.checked ?? false;
   if (!question) { toast(ui('toastEnterQ'), 'info'); return; }
 
   const restore = disableBtn('btn-ask', 'Asking');
@@ -1933,12 +1934,15 @@ async function doAsk() {
   const t0 = performance.now();
 
   try {
-    const r  = await POST('/brain/ask', { question, max_memories: max });
+    const r  = await POST('/brain/ask', { question, max_memories: max, use_graph: useGraph });
     const ms = Math.round(performance.now() - t0);
     const el = brainPanel('ask-result');
+    const graphBadge = useGraph
+      ? `<span style="background:var(--accent);color:var(--bg);border-radius:4px;padding:1px 7px;font-size:9px;font-weight:700;margin-left:8px">⟁ graph</span>`
+      : '';
     el.innerHTML = `
       <div class="brain-response-header">
-        <span>✦ Answer</span>
+        <span>✦ Answer${graphBadge}</span>
         <span class="latency">${ms}ms</span>
       </div>
       <div class="ask-card">
@@ -1991,22 +1995,22 @@ document.getElementById('btn-reflect').addEventListener('click', async () => {
 /* ── DREAM ─────────────────────────────────────────────────── */
 
 document.getElementById('btn-dream').addEventListener('click', async () => {
-  const n       = parseInt(document.getElementById('dream-n').value) || 8;
-  const restore = disableBtn('btn-dream', 'Dreaming');
+  const n        = parseInt(document.getElementById('dream-n').value) || 8;
+  const useGraph = document.getElementById('dream-use-graph')?.checked ?? false;
+  const restore  = disableBtn('btn-dream', 'Dreaming');
   brainLoading('dream-result', ui('loadDreaming', n));
   const t0 = performance.now();
 
   try {
-    const r  = await GET(`/brain/dream?n_memories=${n}`);
+    const r  = await GET(`/brain/dream?n_memories=${n}&use_graph=${useGraph}`);
     const ms = Math.round(performance.now() - t0);
-
-    // Per avere i dettagli dei ricordi campionati dobbiamo
-    // fare una seconda chiamata a /memories/search o usare i dati del result
-    // Il backend non ritorna i Memory, solo il testo delle connessioni.
+    const graphBadge = useGraph
+      ? `<span style="background:var(--accent);color:var(--bg);border-radius:4px;padding:1px 7px;font-size:9px;font-weight:700;margin-left:8px">⟁ graph</span>`
+      : '';
     const el = brainPanel('dream-result');
     el.innerHTML = `
       <div class="brain-response-header">
-        <span>✦ Dream</span>
+        <span>✦ Dream${graphBadge}</span>
         <span class="latency">${ms}ms &nbsp;·&nbsp; ${ui('memoriesSampled', r.memories)}</span>
       </div>
       <div class="dream-card">

@@ -397,18 +397,27 @@ class Brain:
         *,
         max_memories: int = 15,
         concepts: Optional[list[str]] = None,
+        use_graph: bool = False,
     ) -> AskResult:
         """
         RAG su memoria personale: risponde usando solo i ricordi reali.
 
         1. Estrae keyword dalla domanda
         2. Recupera ricordi rilevanti dal DB
-        3. Risponde basandosi esclusivamente su quei ricordi
+        3. [opzionale] Espande il contesto con Dijkstra Spreading Activation
+        4. Risponde basandosi esclusivamente su quei ricordi
+
+        Parametri
+        ---------
+        use_graph : se True, usa Dijkstra per espandere semanticamente i concetti
+                    estratti dall'LLM — recupera ricordi associativamente vicini
+                    anche se non condividono le stesse keyword.
 
         Esempio
         -------
         >>> ans = brain.ask("Come mi sento rispetto al denaro?")
-        >>> ans = brain.ask("C'è qualcosa di irrisolto con la mia famiglia?")
+        >>> ans = brain.ask("C'è qualcosa di irrisolto con la mia famiglia?",
+        ...                  use_graph=True)   # contesto associativo più profondo
         """
         # Step 1: keyword extraction
         kw_prompt = (
@@ -437,12 +446,39 @@ class Brain:
         if not memories:
             _add(self._db.recall_all(limit=max_memories))
 
+        # Step 2b [DIJKSTRA]: Spreading Activation sui concetti estratti dall'LLM
+        # Espande il vicinato semantico fino a max_distance=8 per ciascun concetto.
+        # Aggiunge solo ricordi non ancora presenti per non duplicare il contesto.
+        graph_note = ""
+        if use_graph and llm_concepts:
+            graph_found: list[Memory] = []
+            for c in llm_concepts:
+                neighbours = self._db.dijkstra_search(
+                    c,
+                    max_distance=8.0,
+                    limit=max(3, max_memories // len(llm_concepts)),
+                )
+                for m in neighbours:
+                    if m.memory_id not in seen:
+                        graph_found.append(m)
+                        seen.add(m.memory_id)
+            if graph_found:
+                memories.extend(graph_found)
+                graph_note = (
+                    f" [+{len(graph_found)} ricordi via Dijkstra Spreading "
+                    f"dai concetti: {', '.join(llm_concepts)}]"
+                )
+
         memories = memories[:max_memories]
         context = _memories_to_context(memories)
 
         # Step 3: risposta
+        graph_hint = (
+            "\n(Il contesto include ricordi associativamente collegati tramite grafo semantico.)"
+            if use_graph and graph_note else ""
+        )
         answer_prompt = (
-            f"Hai accesso a questi ricordi personali:\n\n{context}\n\n"
+            f"Hai accesso a questi ricordi personali:{graph_hint}\n\n{context}\n\n"
             f"---\nDomanda: {question}\n\n"
             f"Rispondi basandoti ESCLUSIVAMENTE sui ricordi forniti.\n"
             f"Se le informazioni non bastano, dillo chiaramente.\n"
@@ -504,31 +540,108 @@ class Brain:
 
     # ── DREAM ────────────────────────────────
 
-    def dream(self, n_memories: int = 8) -> DreamResult:
+    def dream(
+        self,
+        n_memories: int = 8,
+        *,
+        use_graph: bool = False,
+    ) -> DreamResult:
         """
         Associazione libera: trova connessioni inattese tra ricordi distanti.
         Simula il processo onirico di consolidamento della memoria.
 
+        Parametri
+        ---------
+        use_graph : se True, usa Dijkstra per trovare il percorso tra due ricordi
+                    emotivamente opposti — i ricordi 'ponte' sono le connessioni
+                    oniriche più significative (non casuale ma semanticamente guidato).
+
         Esempio
         -------
-        >>> d = brain.dream()
+        >>> d = brain.dream()                  # campionamento casuale
+        >>> d = brain.dream(use_graph=True)    # ponte Dijkstra tra emozioni opposte
         >>> print(d.connections)
         """
         all_mems = self._db.recall_all()
         if len(all_mems) < 2:
             raise ValueError("Servono almeno 2 ricordi per sognare.")
 
-        # Campiona da sentimenti diversi
-        by_feeling: dict[str, list[Memory]] = {}
-        for m in all_mems:
-            by_feeling.setdefault(m.feeling, []).append(m)
+        # ── DIJKSTRA DREAM: ponte tra sentimenti opposti ──────────────────────
+        if use_graph:
+            # Coppie di sentimenti emotivamente distanti
+            _OPPOSITES = [
+                ("gioia",      "ansia"),
+                ("gioia",      "tristezza"),
+                ("amore",      "paura"),
+                ("serenità",   "rabbia"),
+                ("gratitudine","malinconia"),
+                ("orgoglio",   "vergogna"),
+                ("curiosità",  "noia"),
+            ]
+            by_feeling: dict[str, list[Memory]] = {}
+            for m in all_mems:
+                by_feeling.setdefault(m.feeling, []).append(m)
 
-        sampled: list[Memory] = []
-        feelings = list(by_feeling.keys())
+            # Cerca la prima coppia opposta che ha ricordi in entrambi i poli
+            bridge: list[Memory] = []
+            pole_start: Optional[Memory] = None
+            pole_end:   Optional[Memory] = None
+            random.shuffle(_OPPOSITES)  # varia il sogno ad ogni chiamata
+            for f_start, f_end in _OPPOSITES:
+                pool_s = by_feeling.get(f_start, [])
+                pool_e = by_feeling.get(f_end,   [])
+                if not pool_s or not pool_e:
+                    continue
+                pole_start = random.choice(pool_s)
+                pole_end   = random.choice(pool_e)
+                bridge = self._db.dijkstra_search(
+                    pole_start.concept,
+                    target_concept=pole_end.concept,
+                )
+                if bridge:
+                    break  # trovato un percorso valido
+
+            if bridge and pole_start and pole_end:
+                # Il sogno è il percorso intero: polo A + bridge + polo B
+                sampled: list[Memory] = []
+                seen_ids: set[str] = set()
+                for m in [pole_start] + bridge + [pole_end]:
+                    if m.memory_id not in seen_ids:
+                        sampled.append(m)
+                        seen_ids.add(m.memory_id)
+                sampled = sampled[:n_memories]
+
+                context = _memories_to_context(sampled)
+                prompt = (
+                    f"Questi ricordi formano un percorso onirico tra due emozioni opposte:\n"
+                    f"'{pole_start.feeling}' ({pole_start.concept}) → "
+                    f"'{pole_end.feeling}' ({pole_end.concept})\n\n"
+                    f"{context}\n\n"
+                    f"Interpreta il viaggio psichico tra questi due poli emotivi:\n"
+                    f"1. Cosa significa attraversare questo confine interiore\n"
+                    f"2. Il ricordo 'ponte' più significativo e perché\n"
+                    f"3. Cosa rivela il percorso sulla struttura emotiva della mente\n"
+                    f"4. Una metafora onirica che cattura l'intero viaggio\n\n"
+                    f"Scrivi come un sogno analizzato — suggestivo, viscerale, non banale."
+                )
+                return DreamResult(
+                    connections=self._llm.complete(self._system, prompt),
+                    memories=sampled,
+                    provider_used=self._llm.active_profile.name,
+                )
+            # Fallback: se nessuna coppia opposta trovata, usa il campionamento classico
+
+        # ── CAMPIONAMENTO CLASSICO ────────────────────────────────────────────
+        by_feeling_c: dict[str, list[Memory]] = {}
+        for m in all_mems:
+            by_feeling_c.setdefault(m.feeling, []).append(m)
+
+        sampled = []
+        feelings = list(by_feeling_c.keys())
         random.shuffle(feelings)
         per_f = max(1, n_memories // len(feelings))
         for f in feelings:
-            sampled.extend(random.sample(by_feeling[f], min(per_f, len(by_feeling[f]))))
+            sampled.extend(random.sample(by_feeling_c[f], min(per_f, len(by_feeling_c[f]))))
         random.shuffle(sampled)
         sampled = sampled[:n_memories]
 

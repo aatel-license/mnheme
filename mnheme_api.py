@@ -231,9 +231,10 @@ class PerceiveOut(BaseModel):
     raw_input         : str
 
 class AskIn(BaseModel):
-    question     : str           = Field(..., json_schema_extra={"example": "Come mi sento rispetto al denaro?"})
-    max_memories : int           = Field(15,  json_schema_extra={"example": 15})
+    question     : str                 = Field(..., json_schema_extra={"example": "Come mi sento rispetto al denaro?"})
+    max_memories : int                 = Field(15,  json_schema_extra={"example": 15})
     concepts     : Optional[List[str]] = Field(None)
+    use_graph    : bool                = Field(False, description="Se True, usa Dijkstra Spreading per arricchire il contesto")
 
 class AskOut(BaseModel):
     question        : str
@@ -384,7 +385,12 @@ def brain_perceive(body: PerceiveIn):
 def brain_ask(body: AskIn):
     b = get_brain()
     try:
-        r = b.ask(body.question, max_memories=body.max_memories, concepts=body.concepts)
+        r = b.ask(
+            body.question,
+            max_memories = body.max_memories,
+            concepts     = body.concepts,
+            use_graph    = body.use_graph,
+        )
         return AskOut(
             question        = r.question,
             answer          = r.answer,
@@ -416,10 +422,13 @@ def brain_reflect(concept: str):
 
 @app.get("/brain/dream", response_model=DreamOut,
          summary="Associazione libera — connessioni inattese tra ricordi distanti")
-def brain_dream(n_memories: int = Query(8, ge=2, le=30)):
+def brain_dream(
+    n_memories : int  = Query(8,     ge=2, le=30),
+    use_graph  : bool = Query(False, description="Se True, usa Dijkstra per trovare il percorso tra emozioni opposte"),
+):
     b = get_brain()
     try:
-        r = b.dream(n_memories=n_memories)
+        r = b.dream(n_memories=n_memories, use_graph=use_graph)
         return DreamOut(
             connections   = r.connections,
             provider_used = r.provider_used,

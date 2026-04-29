@@ -107,17 +107,37 @@ db.count(concept="Debt", feeling="anxiety")
 
 ### Associative Graph Search (Dijkstra)
 
-MNHEME treats memories as nodes in a semantic graph. Connections are formed implicitly via shared concepts, tags, and feelings.
+MNHEME treats memories as nodes in an **implicit semantic graph**.
+Edges form automatically via shared concepts, tags, and feelings — no schema change needed.
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│               IMPLICIT SEMANTIC GRAPH                        │
+│                                                             │
+│  [Debt] ──1.0── [Mortgage]  ←─ same concept                │
+│     │                │                                      │
+│    2.0 (tag)        2.0 (tag: "bank")                       │
+│     │                │                                      │
+│  [Work] ──5.0── [Burnout]   ←─ same feeling (anxiety)       │
+│     │                                                       │
+│    2.0 (tag: "money")                                       │
+│     │                                                       │
+│  [Vacation] ─────────────── target                          │
+│                                                             │
+│  Edge weights:  same concept = 1.0                         │
+│                 shared tag   = 2.0                         │
+│                 shared feeling = 5.0                       │
+└─────────────────────────────────────────────────────────────┘
+```
 
 ```python
-# 1. Spreading Activation: Find memories associated with "Debt" 
-# within a semantic distance of 8.0
-related = db.dijkstra_search("Debt", max_distance=8.0)
+# 1. Spreading Activation: explore the semantic neighbourhood of a concept
+related = db.dijkstra_search("Debt", max_distance=8.0, limit=10)
+# returns all memories within semantic distance 8.0, sorted by proximity
 
-# 2. Multi-hop Reasoning: Find the shortest associative path 
-# between two distant concepts
+# 2. Multi-hop Reasoning: find the shortest associative path
 path = db.dijkstra_search("Debt", target_concept="Vacation")
-# returns a list of Memory objects representing the logical chain
+# e.g. Debt → Work (tag: money) → Burnout (feeling: anxiety) → Vacation
 ```
 
 #### Search Methods Comparison
@@ -125,7 +145,7 @@ path = db.dijkstra_search("Debt", target_concept="Vacation")
 | Method | Type | Strategy | Latency (2k rec) | Best Use Case |
 | :--- | :--- | :--- | :--- | :--- |
 | **`recall()`** | Exact | Concept Key | **~1.5 ms** | Quick retrieval of a specific topic. |
-| **`search()`** | Full-Text | Inverted Index | **~0.1 - 40 ms** | Finding specific words/phrases. |
+| **`search()`** | Full-Text | Inverted Index | **~0.1–40 ms** | Finding specific words/phrases. |
 | **`dijkstra (Hop)`** | Relational | Shortest Path | **~9.2 ms** | Connecting two distant concepts. |
 | **`dijkstra (Spread)`** | Associative | Radius Expansion | **~109 ms** | Exploring semantic context/neighborhood. |
 
@@ -160,12 +180,38 @@ print(r.enriched_content)    # text enriched with psychological depth
 ### `ask()` — RAG on personal memory
 
 ```python
-# Answers using ONLY real memories as context
+# Standard RAG: keyword search + direct recall
 ans = brain.ask("How do I feel about money?")
+
+# Graph-enhanced RAG: Dijkstra Spreading Activation
+# expands the semantic neighbourhood of each extracted concept
+ans = brain.ask("How do I feel about money?", use_graph=True)
 
 print(ans.answer)           # answer based on your memories
 print(ans.memories_used)    # memories used as RAG context
 print(ans.confidence_note)  # "Confidence: high — direct data from memories"
+```
+
+#### How `ask(use_graph=True)` works
+
+```
+Question: "How do I feel about money?"
+        │
+        ▼
+  LLM extracts: ["Debt", "Work"]
+        │
+        ├─── recall("Debt")          → 5 memories    ─┐
+        ├─── recall("Work")          → 5 memories     │ classic RAG
+        ├─── search("money")         → 4 memories    ─┘
+        │
+        └─── dijkstra_search("Debt", max_dist=8)  ─┐  NEW
+             dijkstra_search("Work", max_dist=8)  ─┘  graph expansion
+              ↳ adds "Mortgage", "Burnout", "Family"
+                 associatively linked but not keyword-matched
+        │
+        ▼
+  Deduplicated, top-15 memories → LLM answers
+  (richer context → deeper answer)
 ```
 
 ### `reflect()` — emotional analysis over time
@@ -179,9 +225,39 @@ print(ref.reflection)  # deep analysis of the emotional arc
 ### `dream()` — dream-like connections
 
 ```python
-# Samples memories from different feelings, finds the hidden thread
+# Classic: random sampling from different feelings
 dream = brain.dream(n_memories=8)
-print(dream.connections)  # unexpected associations, latent theme
+
+# Graph-enhanced: Dijkstra path between emotionally opposite memories
+dream = brain.dream(n_memories=8, use_graph=True)
+
+print(dream.connections)  # the hidden thread / the bridge memory
+```
+
+#### How `dream(use_graph=True)` works
+
+```
+  Scans memory pool for emotionally opposite pairs:
+  joy ↔ anxiety,  love ↔ fear,  serenity ↔ anger,  ...
+        │
+        ▼
+  Picks best pair: joy("SummerVacation") ↔ anxiety("Mortgage")
+        │
+        ▼
+  dijkstra_search("SummerVacation", target="Mortgage")
+        │
+        ▼
+  [joy: SummerVacation]
+       ↓ (tag: "family")
+  [hop 1: FamilyDinner]   ← bridge memory
+       ↓ (feeling: anxiety)
+  [anxiety: Mortgage]
+        │
+        ▼
+  LLM interprets the PSYCHIC JOURNEY between the two poles:
+  "What does it mean to cross this inner boundary?"
+  "Which bridge memory is most significant and why?"
+  → richer dream than random sampling
 ```
 
 ### `introspect()` — psychological portrait
@@ -334,16 +410,27 @@ uvicorn mnheme_api:app --reload --port 8000
 ```
 
 ```
-POST /memories              → store a memory
-GET  /memories              → all memories (filters: feeling, limit)
-GET  /memories/search?q=    → full-text search
-GET  /concepts              → concept list with statistics
-GET  /concepts/{concept}    → memories for a concept
-GET  /concepts/{concept}/timeline  → emotional evolution
-GET  /feelings              → feelings with statistics
-GET  /feelings/distribution → feeling → count
-GET  /stats                 → general statistics
-GET  /export                → export JSON
+POST /memories                              → store a memory
+GET  /memories                              → all memories (filters: feeling, limit)
+GET  /memories/search?q=                    → full-text search
+GET  /memories/by-tag/{tag}                 → memories by tag
+GET  /memories/graph/spreading?concept=     → Dijkstra Spreading Activation
+GET  /memories/graph/path?start=&target=    → Dijkstra Multi-hop Path
+GET  /concepts                              → concept list with statistics
+GET  /concepts/{concept}                    → memories for a concept
+GET  /concepts/{concept}/timeline           → emotional evolution
+GET  /feelings                              → feelings with statistics
+GET  /feelings/distribution                 → feeling → count
+GET  /stats                                 → general statistics
+GET  /export                                → export JSON
+
+# Brain endpoints (require LLM)
+POST /brain/perceive                        → raw input → structured memory
+POST /brain/ask                             → RAG answer  {use_graph: bool}
+GET  /brain/dream?use_graph=true            → graph-enhanced dream
+GET  /brain/reflect/{concept}               → emotional arc
+GET  /brain/introspect                      → psychological portrait
+POST /brain/summarize                       → narrative summary
 ```
 
 ---

@@ -564,6 +564,12 @@
           <label data-i18n="labelMaxMemories">Max memories</label>
           <input type="number" id="ask-max" value="15" min="1" max="50">
         </div>
+        <div class="field" style="justify-content:flex-end;padding-top:20px">
+          <label class="toggle-label" title="Usa Dijkstra Spreading per arricchire il contesto con ricordi associativamente vicini">
+            <input type="checkbox" id="ask-use-graph">
+            <span>⟁ Use graph (Dijkstra)</span>
+          </label>
+        </div>
       </div>
       <div class="form-actions">
         <button class="btn-brain" id="btn-ask">
@@ -605,6 +611,10 @@
         <label data-i18n="labelMemSample">Memories to sample</label>
         <input type="number" id="dream-n" value="8" min="2" max="20">
       </div>
+      <label class="toggle-label" title="Usa Dijkstra per trovare il percorso onirico tra emozioni opposte">
+        <input type="checkbox" id="dream-use-graph">
+        <span>⟁ Use graph (Dijkstra)</span>
+      </label>
       <button class="btn-brain" id="btn-dream">
         <span class="btn-icon">~</span> <span data-i18n="navDream">Dream</span>
       </button>
