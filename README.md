@@ -1,5 +1,5 @@
 # MNHEME — Human Memory Database
-![Alt text](https://github.com/aatel-license/mnheme/blob/main/imgs/mnheme_dark.png "mnheme")
+![Alt text](https://raw.githubusercontent.com/aatel-license/mnheme/refs/heads/main/imgs/mnheme_dark.png "mnheme")
 
 # USE IT AT YOUR OWN RISK
 > *"Memory is not overwritten. It accumulates in layers."*
